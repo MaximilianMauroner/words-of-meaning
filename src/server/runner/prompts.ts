@@ -18,6 +18,8 @@ export function modelPrompt(envelope: WorkerEnvelope): string {
   if (envelope.kind === "classify") {
     return [
       "You are a blind classifier. Infer which candidate most likely caused the observable source-code behavior.",
+      "Make two judgments independently. First estimate whether any qualitative modifier was present. Then identify the exact modifier among the non-control candidates.",
+      "The probability map remains a six-way comparison and must not be derived mechanically from the modifier-presence estimate.",
       "Do not explain your answer. Return only the required JSON object.",
       "The control label means the task had no qualitative modifier.",
       `Task without modifier:\n${envelope.neutralTask}`,

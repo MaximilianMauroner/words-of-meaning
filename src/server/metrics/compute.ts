@@ -10,6 +10,11 @@ export type MetricRun = {
   probabilities_json: string | null;
   modifier_present_probability: number | null;
   profile_scores_json: string | null;
+  task_id?: string | null;
+  judge_id?: string | null;
+  channel?: "source" | "screenshot" | null;
+  split?: "regression" | "discovery" | "holdout" | null;
+  placement?: "inline" | "suffix" | null;
 };
 
 export type ExperimentMetrics = ReturnType<typeof computeMetrics>;
@@ -45,6 +50,52 @@ function wilsonInterval(successes: number, trials: number): [number, number] | n
   const center = (observed + z ** 2 / (2 * trials)) / denominator;
   const halfWidth = z * Math.sqrt(observed * (1 - observed) / trials + z ** 2 / (4 * trials ** 2)) / denominator;
   return [Math.max(0, center - halfWidth), Math.min(1, center + halfWidth)];
+}
+
+function mulberry32(seed: number) {
+  return () => {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let value = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    value = value + Math.imul(value ^ value >>> 7, 61 | value) ^ value;
+    return ((value ^ value >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function taskBootstrap(rows: { task: string; correct: boolean }[], iterations = 2_000) {
+  const tasks = [...new Set(rows.map((row) => row.task))];
+  if (tasks.length < 2) return null;
+  const byTask = Object.fromEntries(tasks.map((task) => [task, rows.filter((row) => row.task === task)]));
+  const random = mulberry32(0x51a7c0de);
+  const estimates: number[] = [];
+  for (let iteration = 0; iteration < iterations; iteration += 1) {
+    const sampled = Array.from({ length: tasks.length }, () => byTask[tasks[Math.floor(random() * tasks.length)]]).flat();
+    estimates.push(sampled.filter((row) => row.correct).length / sampled.length);
+  }
+  estimates.sort((a, b) => a - b);
+  return [estimates[Math.floor(iterations * 0.025)], estimates[Math.floor(iterations * 0.975)]] as [number, number];
+}
+
+function blockedPermutationPValue(rows: { task: string; actual: string; predicted: string }[], labels: string[], iterations = 5_000) {
+  const tasks = [...new Set(rows.map((row) => row.task))];
+  if (tasks.length < 2 || rows.length === 0) return null;
+  const observed = rows.filter((row) => row.actual === row.predicted).length;
+  const byTask = Object.fromEntries(tasks.map((task) => [task, rows.filter((row) => row.task === task)]));
+  const random = mulberry32(0x7065726d);
+  let atLeast = 1;
+  for (let iteration = 0; iteration < iterations; iteration += 1) {
+    let correct = 0;
+    for (const task of tasks) {
+      const mapping = [...labels];
+      for (let index = mapping.length - 1; index > 0; index -= 1) {
+        const other = Math.floor(random() * (index + 1));
+        [mapping[index], mapping[other]] = [mapping[other], mapping[index]];
+      }
+      const remap = Object.fromEntries(labels.map((label, index) => [label, mapping[index]]));
+      correct += byTask[task].filter((row) => remap[row.actual] === row.predicted).length;
+    }
+    if (correct >= observed) atLeast += 1;
+  }
+  return atLeast / (iterations + 1);
 }
 
 export function computeMetrics(runs: MetricRun[], dimensionKeys: string[]) {
@@ -114,6 +165,19 @@ export function computeMetrics(runs: MetricRun[], dimensionKeys: string[]) {
 
   const chance = labels.length ? 1 / labels.length : null;
   const chancePValue = chance === null ? null : binomialUpperTail(correct, eligible.length, chance);
+  const exactModifierRows = eligible.filter((run) => !run.is_control);
+  const exactModifierCorrect = exactModifierRows.filter((run) => run.prediction === run.word).length;
+  const detectionRows = eligible.filter((run) => run.modifier_present_probability !== null);
+  const detectionCorrect = detectionRows.filter((run) => {
+    const predictedModifier = run.modifier_present_probability! / 1_000_000 >= 0.5;
+    return predictedModifier === !Boolean(run.is_control);
+  }).length;
+  const blockedRows = eligible.map((run) => ({
+    task: run.task_id || "legacy-task",
+    actual: run.is_control ? CONTROL_LABEL : run.word!,
+    predicted: run.prediction!,
+    correct: (run.is_control ? CONTROL_LABEL : run.word!) === run.prediction,
+  }));
   return {
     labels,
     chance,
@@ -130,6 +194,28 @@ export function computeMetrics(runs: MetricRun[], dimensionKeys: string[]) {
       accuracyWilson95: wilsonInterval(correct, eligible.length),
     },
     logLoss: eligible.length ? logLossTotal / eligible.length : null,
+    hierarchical: {
+      modifierDetection: {
+        threshold: 0.5,
+        eligibleCount: detectionRows.length,
+        correctCount: detectionCorrect,
+        accuracy: detectionRows.length ? detectionCorrect / detectionRows.length : null,
+        wilson95: wilsonInterval(detectionCorrect, detectionRows.length),
+      },
+      exactModifier: {
+        eligibleCount: exactModifierRows.length,
+        correctCount: exactModifierCorrect,
+        chance: labels.length > 1 ? 1 / (labels.length - 1) : null,
+        accuracy: exactModifierRows.length ? exactModifierCorrect / exactModifierRows.length : null,
+        wilson95: wilsonInterval(exactModifierCorrect, exactModifierRows.length),
+      },
+    },
+    taskAware: {
+      taskCount: new Set(blockedRows.map((row) => row.task)).size,
+      taskBootstrapAccuracy95: taskBootstrap(blockedRows),
+      blockedPermutationPValue: blockedPermutationPValue(blockedRows, labels),
+      resamplingUnit: "task_template",
+    },
     controlRecall: recalls[CONTROL_LABEL]?.rate ?? null,
     recalls,
     confusion,

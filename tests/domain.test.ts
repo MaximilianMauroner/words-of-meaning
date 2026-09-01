@@ -69,4 +69,29 @@ describe("experiment domain", () => {
     expect(validateProfile({ scores: { simplicity: 5 } }, [{ key: "simplicity" }])).toEqual({ scores: { simplicity: 5 } });
     expect(() => validateProfile({ scores: { simplicity: 5, extra: 2 } }, [{ key: "simplicity" }])).toThrow(/labels/);
   });
+
+  it("validates blocked task metadata, prompt placement, splits, and independent judges", () => {
+    const result = createExperimentSchema.parse({
+      name: "Task suite",
+      basePrompt: "Write a {{word}} poem.",
+      words: ["lovely", "beautiful", "pretty", "attractive", "appealing"],
+      runsPerCondition: 5,
+      generatorModel: "generator",
+      judgeModel: "legacy-judge",
+      generatorReasoning: "medium",
+      judgeReasoning: "medium",
+      maxConcurrency: 1,
+      tasks: [
+        { id: "poem-rain", name: "Rain poem", family: "poem", split: "regression", placement: "inline", prompt: "Write a {{word}} poem about rain." },
+        { id: "poem-market", name: "Market poem", family: "poem", split: "holdout", placement: "suffix", prompt: "Write a poem about a market. Make it {{word}}." },
+      ],
+      judges: [
+        { id: "judge-a", model: "judge-a", reasoning: "medium", channels: ["source"] },
+        { id: "judge-b", model: "judge-b", reasoning: "medium", channels: ["source", "screenshot"] },
+      ],
+    });
+    expect(result.primaryEndpoint).toBe("exact_modifier_accuracy");
+    expect(result.tasks).toHaveLength(2);
+    expect(result.judges).toHaveLength(2);
+  });
 });

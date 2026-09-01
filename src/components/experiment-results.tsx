@@ -25,6 +25,11 @@ type ResultData = {
       accuracyWilson95: [number, number] | null;
     };
     logLoss: number | null;
+    hierarchical: {
+      modifierDetection: { eligibleCount: number; correctCount: number; accuracy: number | null; wilson95: [number, number] | null };
+      exactModifier: { eligibleCount: number; correctCount: number; chance: number | null; accuracy: number | null; wilson95: [number, number] | null };
+    };
+    taskAware: { taskCount: number; taskBootstrapAccuracy95: [number, number] | null; blockedPermutationPValue: number | null; resamplingUnit: string };
     controlRecall: number | null;
     recalls: Record<string, { correct: number; total: number; rate: number | null }>;
     confusion: Record<string, Record<string, number>>;
@@ -103,12 +108,16 @@ export function ExperimentResults({ id }: { id: string }) {
       )}
 
       <section className="metric-grid">
+        <Metric label="Modifier detection" value={formatPercent(data.metrics.hierarchical.modifierDetection.accuracy)} note={`${data.metrics.hierarchical.modifierDetection.correctCount}/${data.metrics.hierarchical.modifierDetection.eligibleCount} at 0.5 threshold`} />
+        <Metric label="Exact modifier" value={formatPercent(data.metrics.hierarchical.exactModifier.accuracy)} note={`Chance ${formatPercent(data.metrics.hierarchical.exactModifier.chance)}, control excluded`} />
         <Metric label="Identification accuracy" value={formatPercent(data.metrics.accuracy)} note={`${data.metrics.correctCount}/${data.metrics.eligibleCount} eligible`} />
         <Metric label="Chance" value={formatPercent(data.metrics.chance)} note={`${data.metrics.labels.length} candidates`} />
         <Metric label="Chance p-value" value={formatNumber(data.metrics.significance.oneSidedPValue)} note={data.metrics.significance.significant ? "Above chance at α=0.05" : "Not above chance at α=0.05"} />
         <Metric label="95% accuracy interval" value={formatInterval(data.metrics.significance.accuracyWilson95)} note="Wilson score interval" />
         <Metric label="Log loss" value={formatNumber(data.metrics.logLoss)} note="Lower is better" />
         <Metric label="Control recall" value={formatPercent(data.metrics.controlRecall)} note={`${data.metrics.excludedCount} excluded`} />
+        <Metric label="Task bootstrap 95%" value={formatInterval(data.metrics.taskAware.taskBootstrapAccuracy95)} note={`${data.metrics.taskAware.taskCount} task blocks`} />
+        <Metric label="Blocked permutation p" value={formatNumber(data.metrics.taskAware.blockedPermutationPValue)} note="Labels permuted within task" />
       </section>
 
       <section className="panel">

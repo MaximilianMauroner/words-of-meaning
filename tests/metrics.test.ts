@@ -20,8 +20,8 @@ describe("metrics", () => {
   it("computes accuracy, confusion, loss, pair confusion, and control deltas", () => {
     const runs = [
       run({}),
-      run({ normalized_word: "elegant", word: "elegant", is_control: 0, prediction: "elegant", probabilities_json: JSON.stringify({ control: 0.1, elegant: 0.9 }), profile_scores_json: JSON.stringify({ simplicity: 6 }) }),
-      run({ normalized_word: "elegant", word: "elegant", is_control: 0, prediction: "control", probabilities_json: JSON.stringify({ control: 0.7, elegant: 0.3 }), profile_scores_json: JSON.stringify({ simplicity: 4 }) }),
+      run({ normalized_word: "elegant", word: "elegant", is_control: 0, prediction: "elegant", probabilities_json: JSON.stringify({ control: 0.1, elegant: 0.9 }), modifier_present_probability: 900_000, profile_scores_json: JSON.stringify({ simplicity: 6 }) }),
+      run({ normalized_word: "elegant", word: "elegant", is_control: 0, prediction: "control", probabilities_json: JSON.stringify({ control: 0.7, elegant: 0.3 }), modifier_present_probability: 400_000, profile_scores_json: JSON.stringify({ simplicity: 4 }) }),
     ];
     const metrics = computeMetrics(runs, ["simplicity"]);
     expect(metrics.accuracy).toBeCloseTo(2 / 3);
@@ -33,6 +33,8 @@ describe("metrics", () => {
     expect(metrics.significance.oneSidedPValue).toBeCloseTo(0.5);
     expect(metrics.significance.significant).toBe(false);
     expect(metrics.significance.accuracyWilson95).not.toBeNull();
+    expect(metrics.hierarchical.exactModifier.accuracy).toBe(0.5);
+    expect(metrics.hierarchical.modifierDetection.accuracy).toBeCloseTo(2 / 3);
   });
 
   it("excludes failed and word-leaking runs from primary metrics", () => {
@@ -45,5 +47,16 @@ describe("metrics", () => {
     expect(metrics.accuracy).toBeNull();
     expect(metrics.significance.oneSidedPValue).toBeNull();
     expect(metrics.significance.accuracyWilson95).toBeNull();
+  });
+
+  it("resamples whole task blocks when several task templates are present", () => {
+    const rows = ["task-a", "task-b"].flatMap((task_id) => [
+      run({ task_id }),
+      run({ task_id, normalized_word: "elegant", word: "elegant", is_control: 0, prediction: "elegant", probabilities_json: JSON.stringify({ control: 0.1, elegant: 0.9 }), modifier_present_probability: 900_000 }),
+    ]);
+    const metrics = computeMetrics(rows, ["simplicity"]);
+    expect(metrics.taskAware.taskCount).toBe(2);
+    expect(metrics.taskAware.taskBootstrapAccuracy95).toEqual([1, 1]);
+    expect(metrics.taskAware.blockedPermutationPValue).not.toBeNull();
   });
 });

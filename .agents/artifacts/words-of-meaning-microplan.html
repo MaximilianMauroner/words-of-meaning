@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Words of Meaning: implementation microplan</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f7f6f2;
+      --panel: #ffffff;
+      --ink: #252521;
+      --muted: #66665f;
+      --line: #d8d6cc;
+      --accent: #315b51;
+      --accent-soft: #e5efeb;
+      --warn: #8a4b20;
+      --warn-soft: #f7eadf;
+      --code: #eeede7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: min(1120px, calc(100% - 32px)); margin: 32px auto 72px; }
+    header, section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 24px; margin: 0 0 16px; }
+    h1, h2, h3 { line-height: 1.2; margin: 0 0 12px; }
+    h1 { font-size: clamp(26px, 4vw, 40px); letter-spacing: -0.025em; }
+    h2 { font-size: 22px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+    h3 { font-size: 16px; margin-top: 22px; }
+    p { margin: 8px 0 12px; }
+    ul, ol { padding-left: 22px; margin: 8px 0 14px; }
+    li + li { margin-top: 5px; }
+    code, pre { font: 13px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    code { background: var(--code); padding: 1px 4px; border-radius: 4px; }
+    pre { background: var(--code); padding: 14px; border-radius: 7px; overflow: auto; white-space: pre; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 14px; }
+    th, td { text-align: left; vertical-align: top; border: 1px solid var(--line); padding: 8px 10px; }
+    th { background: var(--code); }
+    .lede { max-width: 84ch; font-size: 17px; }
+    .meta { color: var(--muted); }
+    .callout { border-left: 4px solid var(--accent); background: var(--accent-soft); padding: 12px 14px; margin: 14px 0; }
+    .warning { border-left-color: var(--warn); background: var(--warn-soft); }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .card { border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+    .card h3 { margin-top: 0; }
+    .status { display: inline-block; color: #fff; background: var(--accent); border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 650; }
+    .diagram { overflow-x: auto; }
+    .diagram svg { min-width: 760px; width: 100%; height: auto; }
+    a { color: var(--accent); }
+    @media (max-width: 760px) {
+      main { width: min(100% - 20px, 1120px); margin-top: 10px; }
+      header, section { padding: 17px; }
+      .grid { grid-template-columns: 1fr; }
+      table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #191a18; --panel: #222320; --ink: #ecece5; --muted: #aaa99f;
+        --line: #41423c; --accent: #8bc1b3; --accent-soft: #263b35;
+        --warn: #eca873; --warn-soft: #402e22; --code: #2d2e2a;
+      }
+      .status { color: #16211e; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="status">Decision-ready</span>
+    <h1>Words of Meaning</h1>
+    <p class="lede">A local blind prompt-identification benchmark for measuring whether qualitative words leave detectable behavioral signatures in generated source code.</p>
+    <p class="meta">Microplan prepared 31 August 2026. First implementation milestone includes blind identification and control-relative behavioral profiles.</p>
+    <div class="callout">
+      <strong>Claim boundary.</strong> The benchmark can show that an adjective changed observable output in a recognizable way. It cannot establish that a model holds a particular hidden definition of that adjective.
+    </div>
+  </header>
+
+  <section>
+    <h2>Goal and definition of done</h2>
+    <p>Build a local, single-user React application that runs controlled source-generation experiments through the TypeScript Codex SDK. The app must hide the true condition during judging, prevent one run from inheriting another run's messages or workspace, and keep enough raw evidence to audit every metric.</p>
+    <h3>Done criteria</h3>
+    <ul>
+      <li>A user can enter a base prompt containing <code>{{word}}</code>, add at least two words, keep the required no-word control, choose run count and model settings, and start an experiment.</li>
+      <li>The default example can run six conditions with five independent generations per condition, for 30 source bundles total.</li>
+      <li>Every generation, classification, and profile evaluation starts in a new OS process, new Codex SDK instance, new SDK thread, and unique temporary working directory.</li>
+      <li>No judgment job receives the true condition, generation prompt, generator transcript, generation thread ID, or stable ordering that reveals the answer.</li>
+      <li>The result screen reports chance baseline, top-1 accuracy, log loss, per-condition recall, control detection, a count-based confusion matrix, probability summaries, behavioral profiles, and raw run details.</li>
+      <li>Interrupted experiments resume pending work without rerunning successful jobs. Cancellation stops new jobs and preserves completed results.</li>
+      <li>Automated tests prove prompt construction, source normalization, seeded shuffling, score calculations, database constraints, blind payload construction, process isolation, and workspace isolation.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Confirmed scope</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Included in milestone one</h3>
+        <ul>
+          <li>Local web UI and SQLite persistence</li>
+          <li>Existing Codex sign-in, no API-key path</li>
+          <li>Editable prompts, word lists, models, reasoning effort, run count, and profile dimensions</li>
+          <li>Required no-word control</li>
+          <li>Canonical generated source bundles</li>
+          <li>Blind probability classification</li>
+          <li>Behavioral dimension scoring</li>
+          <li>Live progress, cancellation, restart recovery, metrics, and run drill-down</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Deferred</h3>
+        <ul>
+          <li>Rendered screenshots and browser-based UI scoring</li>
+          <li>Hosted deployment, accounts, teams, and shared experiments</li>
+          <li>Claude, Gemini, or direct OpenAI API integrations</li>
+          <li>Automated related-word discovery</li>
+          <li>Embeddings and advanced significance tests</li>
+          <li>Judge explanations during classification</li>
+          <li>Cross-task comparison screens</li>
+          <li>Claims about hidden model representations</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout warning">
+      <strong>Account caveat.</strong> The SDK will reuse the local Codex sign-in. The app will not request or store an API key. Existing account entitlements, credits, rate limits, and fair-use rules still apply. The official documentation does not promise that every SDK run is free of account usage limits.
+    </div>
+  </section>
+
+  <section>
+    <h2>Decisions</h2>
+    <table>
+      <thead><tr><th>Area</th><th>Decision</th><th>Reason</th></tr></thead>
+      <tbody>
+        <tr><td>Application</td><td>Next.js with TypeScript, React, and server-only SDK calls</td><td>One local process can serve the UI and orchestration API. SDK imports remain outside browser bundles.</td></tr>
+        <tr><td>Persistence</td><td>SQLite with Drizzle migrations</td><td>Experiments need durable job state and relational joins, but no network database.</td></tr>
+        <tr><td>Execution</td><td>A bounded scheduler launches one short-lived Node child process per model call</td><td>Process boundaries prevent shared SDK objects, module globals, environment mutations, and in-memory transcripts from crossing runs.</td></tr>
+        <tr><td>Thread policy</td><td>Call <code>startThread()</code> exactly once in each child process; never call <code>resumeThread()</code>, fork, or a second <code>run()</code></td><td>A thread is stored conversation history. New threads are the minimum acceptable message boundary.</td></tr>
+        <tr><td>Workspace policy</td><td>Unique temporary directory outside the application repository for every call</td><td>The model must not see outputs or instructions left by earlier calls or repository-level experiment truth.</td></tr>
+        <tr><td>Judged artifact</td><td>Normalized text bundle of generated source files</td><td>It captures implementation choices without the generator's final-response prose and avoids browser setup in milestone one.</td></tr>
+        <tr><td>Control</td><td>Every experiment includes one no-word condition that removes the placeholder cleanly</td><td>Word-to-word differences alone cannot show that any modifier changed the output.</td></tr>
+        <tr><td>Randomness</td><td>Cryptographic experiment seed persisted once; derive stable per-job seeds and candidate permutations</td><td>Runs can resume and metrics can be audited without giving every judge the same answer position.</td></tr>
+        <tr><td>Profiles</td><td>Judge raw 1-to-7 dimension scores; display differences from the control mean</td><td>Raw scores stay inspectable. Control subtraction makes the displayed zero meaningful within an experiment.</td></tr>
+        <tr><td>Explanations</td><td>No rationale in classification or profile calls</td><td>The app asks only for structured scores, reducing extra text and avoiding rationale-driven label choice.</td></tr>
+      </tbody>
+    </table>
+    <p>The plan uses the documented TypeScript package <code>@openai/codex-sdk</code>. Official documentation says it runs server-side on Node 18 or newer, starts work with <code>startThread()</code>, and continues history when callers reuse a thread. See <a href="https://learn.chatgpt.com/docs/codex-sdk" rel="noopener noreferrer" target="_blank">Codex SDK documentation</a>.</p>
+  </section>
+
+  <section>
+    <h2>System design</h2>
+    <div class="diagram" aria-label="Experiment execution and blind scoring flow">
+      <svg viewBox="0 0 1040 300" role="img">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#668078"/></marker>
+        </defs>
+        <g fill="none" stroke="#668078" stroke-width="2" marker-end="url(#arrow)">
+          <path d="M175 70 H255"/><path d="M445 70 H525"/><path d="M715 70 H795"/>
+          <path d="M890 105 V190 H715"/><path d="M525 225 H445"/><path d="M255 225 H175"/>
+        </g>
+        <g fill="var(--panel)" stroke="var(--line)" stroke-width="2">
+          <rect x="25" y="35" width="150" height="70" rx="8"/><rect x="255" y="35" width="190" height="70" rx="8"/>
+          <rect x="525" y="35" width="190" height="70" rx="8"/><rect x="795" y="35" width="190" height="70" rx="8"/>
+          <rect x="525" y="190" width="190" height="70" rx="8"/><rect x="255" y="190" width="190" height="70" rx="8"/>
+          <rect x="25" y="190" width="150" height="70" rx="8"/>
+        </g>
+        <g fill="var(--ink)" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">
+          <text x="100" y="66">Experiment config</text><text x="100" y="87">and seed</text>
+          <text x="350" y="58">Scheduler</text><text x="350" y="79">durable jobs</text><text x="350" y="96">bounded concurrency</text>
+          <text x="620" y="58">Isolated generator</text><text x="620" y="79">process + workspace</text><text x="620" y="96">fresh SDK thread</text>
+          <text x="890" y="58">Canonicalizer</text><text x="890" y="79">allowlist + limits</text><text x="890" y="96">source bundle</text>
+          <text x="620" y="213">Blind evaluators</text><text x="620" y="234">classifier + profiler</text><text x="620" y="251">fresh process each</text>
+          <text x="350" y="213">Scorer</text><text x="350" y="234">truth joined here</text><text x="350" y="251">metrics + profiles</text>
+          <text x="100" y="220">Results UI</text><text x="100" y="241">and audit trail</text>
+        </g>
+      </svg>
+    </div>
+    <h3>Process contract</h3>
+    <p>The parent scheduler reads SQLite and owns the truth. It sends a narrow JSON envelope to a child over standard input. Generation envelopes contain the rendered prompt and settings. Classification envelopes contain the adjective-free task, canonical source bundle, and randomized candidate labels. Profile envelopes contain the adjective-free task, source bundle, rubric, and dimensions. Child processes cannot open the experiment database.</p>
+    <p>Each child writes one validated JSON result to standard output. Diagnostic events go to standard error with secrets and source content redacted. The parent stores the result, exit code, timing, model, reasoning effort, SDK version, and a hash of the input envelope.</p>
+    <h3>Job state machine</h3>
+    <pre>pending -&gt; leased -&gt; running -&gt; succeeded
+                    |          |
+                    |          +-&gt; failed_retryable -&gt; pending
+                    +-------------&gt; failed_final
+
+experiment: draft -&gt; queued -&gt; running -&gt; completed
+                              |          |
+                              +-&gt; canceled
+                              +-&gt; completed_with_failures</pre>
+    <p>Leases have an expiry. On startup, the scheduler returns expired <code>leased</code> or <code>running</code> jobs to <code>pending</code>. It never overwrites a successful attempt.</p>
+  </section>
+
+  <section>
+    <h2>Run isolation and contamination controls</h2>
+    <p>This is a correctness property of the benchmark. A fresh prompt alone is not enough.</p>
+    <table>
+      <thead><tr><th>Possible contamination</th><th>Control</th><th>Proof</th></tr></thead>
+      <tbody>
+        <tr><td>Conversation history</td><td>One process, SDK instance, thread, and turn per call. Ban resume and fork APIs in the runner module.</td><td>Unit test spies on the SDK adapter; integration test checks all stored thread IDs are unique.</td></tr>
+        <tr><td>Files from earlier runs</td><td>Create a new temporary root per call. Copy only the fixed task scaffold into generation workspaces and only the one canonical bundle into evaluator input.</td><td>Place a high-entropy sentinel in run A. Run B must not read or reproduce it. Assert unique resolved workspace paths.</td></tr>
+        <tr><td>Application repository</td><td>Launch children with the temporary directory as current working directory. Do not nest it under the repository, so repository <code>AGENTS.md</code> files and generated artifacts are not ancestors.</td><td>Fixture repository contains a trap instruction. Generated output must not contain its token.</td></tr>
+        <tr><td>Shared memory and SDK caches</td><td>Exit the child after one model response. No worker pool and no shared <code>Codex</code> instance.</td><td>Process IDs differ across attempts; a mock module-global sentinel cannot survive the next call.</td></tr>
+        <tr><td>Environment mutation</td><td>Build a small environment allowlist for child processes. Keep only runtime paths, locale, and the auth/config variables required by Codex.</td><td>Test-only secret environment variables never appear in the child snapshot.</td></tr>
+        <tr><td>Truth leakage to judges</td><td>Separate TypeScript envelope types and builders. Judge builders accept an opaque artifact ID, then return payloads without condition joins.</td><td>Snapshot tests reject adjective, condition ID, generator prompt, run number, thread ID, and truth fields.</td></tr>
+        <tr><td>Candidate position bias</td><td>Derive a permutation from experiment seed and judgment ID. Persist the presented order.</td><td>Property tests prove permutation completeness, repeatability, and position balance warnings.</td></tr>
+        <tr><td>Machine-level Codex configuration</td><td>At startup, show an isolation audit with SDK version, detected sign-in, model availability, inherited configuration sources, and effective sandbox. Refuse to run if the required workspace boundary cannot be applied.</td><td>Preflight integration test fails closed when the adapter reports unknown permissions.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warning">
+      <strong>Honest limit.</strong> Separate threads prevent history reuse, but all runs still use the same installed SDK, account, model, and permitted machine-level Codex configuration. Those shared constants are part of the experiment environment. The app records them and blocks known mutable cross-run channels; it does not claim to isolate unobservable provider-side state.
+    </div>
+    <h3>Temporary workspace lifecycle</h3>
+    <ol>
+      <li>Create the directory with mode <code>0700</code> under the operating system's temporary root.</li>
+      <li>Write only the job envelope's scaffold or evaluator input.</li>
+      <li>Start Codex with workspace access limited to that directory and network disabled unless an experiment explicitly requires package retrieval in a later milestone.</li>
+      <li>Collect allowed output files, normalize them, hash the bundle, and persist the bundle transactionally.</li>
+      <li>Remove the temporary directory in a <code>finally</code> block. On cleanup failure, quarantine the path and show a local warning without feeding it to another run.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Experiment contract</h2>
+    <h3>Prompt rendering</h3>
+    <p>The base prompt must contain exactly one <code>{{word}}</code> placeholder. A word condition replaces it with the entered word. The control replaces it with an empty string, then normalizes whitespace and punctuation around the removed slot. The preview shows every rendered prompt before execution.</p>
+    <p>The generator also receives a fixed artifact contract: create the requested implementation inside the current workspace, do not mention or encode the qualitative modifier, do not add prose files unless the task requests them, and finish without reading outside the workspace. The app stores the full fixed contract by version so later experiments remain comparable.</p>
+    <h3>Canonical source bundle</h3>
+    <ul>
+      <li>Include UTF-8 text files matching a configurable source allowlist such as <code>.ts</code>, <code>.tsx</code>, <code>.js</code>, <code>.jsx</code>, <code>.css</code>, <code>.json</code>, and <code>.md</code>.</li>
+      <li>Exclude version-control data, dependency directories, build output, lockfiles by default, binary files, SDK transcripts, hidden Codex files, and files that exceed limits.</li>
+      <li>Sort relative paths bytewise. Normalize line endings to LF. Preserve source text otherwise.</li>
+      <li>Represent each file with a neutral ordinal path if the task lets models choose revealing names. Store the original path separately for owner inspection, never for judges.</li>
+      <li>Apply per-file and total byte limits. Mark truncated or rejected artifacts as failed generation attempts rather than silently scoring partial work.</li>
+      <li>Scan bundle text for the exact condition word, case-insensitively. If found, flag the run and exclude it from primary metrics by default because the judge could answer by string matching. Keep it visible in the audit view.</li>
+    </ul>
+    <h3>Classification output</h3>
+    <pre>{
+  "prediction": "polished",
+  "modifier_present_probability": 0.91,
+  "probabilities": {
+    "control": 0.03,
+    "lovely": 0.08,
+    "beautiful": 0.17,
+    "elegant": 0.12,
+    "polished": 0.51,
+    "refined": 0.09
+  }
+}</pre>
+    <p>Labels must match the supplied candidates exactly. Values must be finite and fall between 0 and 1. Candidate probabilities must sum to 1 within <code>0.001</code>, and <code>prediction</code> must be an argmax. The parent rejects invalid JSON. A retry starts a different process and thread while retaining the failed attempt.</p>
+    <h3>Behavioral profile output</h3>
+    <p>Each profile call scores fixed dimensions from 1 to 7 and may return <code>null</code> only when the source lacks evidence. Default dimensions are simplicity, abstraction, visual ornamentation, consistency, UX detail, code verbosity, defensive programming, modularity, dependency count, documentation, type strictness, and accessibility. Each dimension has anchored descriptions for 1, 4, and 7. Rubric versions are immutable once an experiment starts.</p>
+    <p>The app displays a condition's mean raw score minus the control mean for that dimension. It also shows sample count, standard deviation, and the raw distributions. The control line is zero by construction, not an evaluator output.</p>
+  </section>
+
+  <section>
+    <h2>Data model</h2>
+    <table>
+      <thead><tr><th>Table</th><th>Key fields and constraints</th></tr></thead>
+      <tbody>
+        <tr><td><code>experiments</code></td><td>ID, name, base prompt, adjective-free task, seed, status, run count, prompt-contract version, rubric version, timestamps</td></tr>
+        <tr><td><code>model_configs</code></td><td>Experiment ID, role, model, reasoning effort, sandbox policy, SDK version, captured effective settings</td></tr>
+        <tr><td><code>conditions</code></td><td>ID, experiment ID, display order, word nullable, <code>is_control</code>; exactly one control per experiment; words unique after Unicode normalization and case folding</td></tr>
+        <tr><td><code>generations</code></td><td>ID, condition ID, run index, status, rendered-prompt hash, active attempt ID; unique condition and run index</td></tr>
+        <tr><td><code>artifacts</code></td><td>Generation ID, canonical bundle, SHA-256, byte count, file manifest, word-leak flag, canonicalizer version</td></tr>
+        <tr><td><code>judgments</code></td><td>ID, generation ID, status, candidate-order JSON, prediction, modifier probability, probability JSON, active attempt ID</td></tr>
+        <tr><td><code>profile_scores</code></td><td>Judgment ID, dimension ID, nullable score; unique judgment and dimension</td></tr>
+        <tr><td><code>jobs</code></td><td>ID, kind, target ID, state, lease owner, lease expiry, retry count, next attempt time, timestamps</td></tr>
+        <tr><td><code>attempts</code></td><td>Job ID, ordinal, process ID, workspace fingerprint, SDK thread ID, input hash, output hash, timing, exit code, redacted error</td></tr>
+        <tr><td><code>dimensions</code></td><td>Rubric version, stable key, label, low/mid/high anchors, display order</td></tr>
+      </tbody>
+    </table>
+    <p>Store truth through <code>generations.condition_id</code>. Never denormalize the word into <code>judgments</code>, <code>jobs</code>, or attempt envelopes. Metric queries may join truth only after judgments reach <code>succeeded</code>.</p>
+  </section>
+
+  <section>
+    <h2>Metrics and interpretation</h2>
+    <table>
+      <thead><tr><th>Metric</th><th>Definition</th><th>Why it is present</th></tr></thead>
+      <tbody>
+        <tr><td>Chance baseline</td><td><code>1 / candidate_count</code>, including control</td><td>Frames top-1 accuracy against random choice.</td></tr>
+        <tr><td>Top-1 accuracy</td><td>Correct predictions divided by eligible judgments</td><td>Direct identifiability measure.</td></tr>
+        <tr><td>Per-condition recall</td><td>Correct predictions for a condition divided by eligible outputs from that condition</td><td>Shows which words produce recognizable signatures.</td></tr>
+        <tr><td>Confusion matrix</td><td>Raw counts by actual and predicted label, with optional row percentages</td><td>Reveals pairs that collapse into similar instructions.</td></tr>
+        <tr><td>Log loss</td><td>Negative mean log probability assigned to the true label, with probability floor <code>1e-12</code></td><td>Uses the complete probability distribution and penalizes confident mistakes.</td></tr>
+        <tr><td>Control discrimination</td><td>Control recall, modifier-present ROC summary when sample size permits, and mean modifier-present probability by condition</td><td>Tests whether any qualitative modifier is detectable.</td></tr>
+        <tr><td>Pair confusion</td><td>Bidirectional off-diagonal count for each pair</td><td>Ranks the most commonly confused words.</td></tr>
+        <tr><td>Profile delta</td><td>Condition mean minus control mean by dimension</td><td>Describes the observable direction associated with each word.</td></tr>
+      </tbody>
+    </table>
+    <p>Primary metrics exclude failed calls, invalid artifacts, and direct word leaks, and show the excluded count beside every denominator. A secondary all-completed view may include flagged word leaks. With five runs per condition, the UI warns that one result moves per-condition accuracy by 20 percentage points. It recommends 20 to 50 runs for claims beyond tool development.</p>
+    <p>Milestone one reports descriptive results and does not label a word as statistically distinct. A later analysis milestone can add bootstrap intervals, permutation tests, multiple-comparison correction, and repeated judges.</p>
+  </section>
+
+  <section>
+    <h2>User experience</h2>
+    <h3>Experiment builder</h3>
+    <ol>
+      <li>Enter experiment name and base prompt. The editor validates one <code>{{word}}</code> slot and previews the adjective-free task.</li>
+      <li>Add words. The fixed control appears as a locked row. Duplicate and empty entries fail validation.</li>
+      <li>Set generations per condition, generator model, judge model, reasoning efforts, maximum concurrency, and profile dimensions.</li>
+      <li>Review rendered prompts, total model-call count, account-usage warning, isolation audit, and estimated stages.</li>
+      <li>Start the experiment. Configuration becomes immutable; "Duplicate experiment" creates an editable copy.</li>
+    </ol>
+    <h3>Progress screen</h3>
+    <p>Show totals for generation, classification, and profiles; current concurrency; retry counts; elapsed time; cancellation; and failures. Stream status with server-sent events and fall back to polling. Never stream hidden words beside judgment jobs.</p>
+    <h3>Results screen</h3>
+    <ul>
+      <li>Summary cards for accuracy, chance, log loss, control recall, exclusions, and completed sample count.</li>
+      <li>Ranked most and least identifiable conditions with exact denominators.</li>
+      <li>Confusion matrix with count and row-percentage modes.</li>
+      <li>Most-confused pairs.</li>
+      <li>Behavioral profile table or compact diverging chart, always paired with raw score distributions.</li>
+      <li>Condition detail with all runs, canonical source, prediction, probabilities, modifier probability, profile values, flags, attempt history, and copied hashes.</li>
+      <li>Export of experiment configuration, raw results, and metric inputs as JSON. Export excludes local auth data, temporary paths, and full SDK diagnostics.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Implementation sequence</h2>
+    <ol>
+      <li><strong>Prove the SDK boundary.</strong> Create a throwaway TypeScript probe that reuses the current Codex sign-in, starts one thread, runs in a supplied temporary directory, applies the intended sandbox, returns structured text, and exits. Record the installed SDK behavior. Stop implementation if workspace restriction or fresh-thread guarantees cannot be observed.</li>
+      <li><strong>Create the application shell.</strong> Initialize Next.js, TypeScript strict mode, linting, tests, Drizzle, SQLite, and server-only module guards. Add health and preflight endpoints.</li>
+      <li><strong>Implement the domain model.</strong> Add migrations, experiment validation, Unicode-normalized conditions, mandatory control, immutable started configurations, job transitions, leases, retries, and restart recovery.</li>
+      <li><strong>Build the isolated runner.</strong> Add the parent scheduler, child entry point, narrow envelope types, environment allowlist, temporary workspace manager, SDK adapter, timeout and cancellation handling, result validation, cleanup, and redacted diagnostics.</li>
+      <li><strong>Generate artifacts.</strong> Render prompts, copy a fixed minimal scaffold, run one Codex call, canonicalize allowed source files, detect direct word leaks, hash bundles, and persist artifacts.</li>
+      <li><strong>Add blind evaluators.</strong> Derive randomized candidate orders, build truth-free envelopes, validate classification probabilities, score fixed behavioral dimensions, and retain every failed attempt without exposing truth to retry prompts.</li>
+      <li><strong>Calculate results.</strong> Implement pure metric functions with fixture datasets, explicit denominators, exclusions, profile deltas, and stable JSON export.</li>
+      <li><strong>Build the UI.</strong> Add experiment builder, call-count preview, isolation audit, progress, cancellation, results, confusion matrix, profiles, source viewer, flags, attempts, and export.</li>
+      <li><strong>Harden and calibrate.</strong> Run contamination canaries, truth-leak snapshots, crash recovery tests, concurrency stress, malformed-output retries, and a small real-model smoke experiment. Inspect all raw payloads before accepting the benchmark.</li>
+      <li><strong>Document interpretation.</strong> Explain what identifiability supports, what it does not support, why the control matters, how exclusions work, and why five runs are development evidence rather than a firm conclusion.</li>
+    </ol>
+    <h3>Proposed source layout</h3>
+    <pre>src/
+  app/                     React pages and route handlers
+  components/              builder, progress, matrix, profiles, run detail
+  server/
+    db/                    schema, migrations, repositories
+    experiments/           validation, prompt rendering, orchestration
+    jobs/                  scheduler, leases, retries, recovery
+    runner/                child launcher, envelopes, workspace, SDK adapter
+    artifacts/             collection, canonicalization, leak checks
+    evaluators/            classifier and profile contracts
+    metrics/               pure scoring and export functions
+  worker/
+    codex-call.ts          one process, one SDK instance, one thread, one turn
+  shared/                  versioned schemas and safe public types
+tests/
+  unit/ integration/ fixtures/
+drizzle/                   SQLite migrations</pre>
+  </section>
+
+  <section>
+    <h2>Validation plan</h2>
+    <table>
+      <thead><tr><th>Layer</th><th>Required checks</th></tr></thead>
+      <tbody>
+        <tr><td>Unit</td><td>Placeholder rendering, control cleanup, Unicode duplicates, seed derivation, permutations, canonicalization, exclusions, JSON validation, confusion counts, accuracy, log loss, pair confusion, control deltas</td></tr>
+        <tr><td>Property</td><td>Every candidate appears once per permutation; candidate probabilities sum correctly after parsing; metrics remain stable under row ordering; blind envelopes never serialize forbidden fields</td></tr>
+        <tr><td>Database</td><td>One control, unique run index, legal state transitions, idempotent success writes, lease recovery, immutable started experiments, retry attempt retention</td></tr>
+        <tr><td>Isolation</td><td>Unique process, thread, and workspace per call; module globals disappear; sentinel files and environment values do not cross calls; repository trap instructions stay unseen</td></tr>
+        <tr><td>Blindness</td><td>Captured classifier and profile inputs omit word, condition ID, prompt, run index, thread ID, original path, and generator diagnostics; truth joins occur only in scorer tests</td></tr>
+        <tr><td>Failure</td><td>Timeout, cancellation, invalid JSON, probability error, SDK exit, disk-full simulation, cleanup failure, app restart, and exhausted retries produce explicit states</td></tr>
+        <tr><td>End to end</td><td>Use a fake Codex adapter to finish a deterministic multi-condition experiment and verify UI totals, matrices, profiles, exclusions, resume, and export</td></tr>
+        <tr><td>Real model smoke</td><td>Run control plus two words with two generations each. Review source bundles and every judge payload manually. Do not use smoke accuracy as product validation.</td></tr>
+      </tbody>
+    </table>
+    <h3>Isolation acceptance canaries</h3>
+    <ol>
+      <li>Run A receives a random 128-bit token in a file. Run B receives no token. Exact or normalized token presence in B fails the suite.</li>
+      <li>Run A mutates a test SDK adapter's module global. Run B must observe its default value because it starts in another process.</li>
+      <li>The application repository contains a test <code>AGENTS.md</code> instruction with a trap phrase. A child working outside the repository must not repeat it.</li>
+      <li>A fake database row contains the true word in every truth-bearing field. Serialized judgment envelopes must remain byte-for-byte free of that word and its condition identifier.</li>
+      <li>Thirty calls must yield 30 unique process/workspace pairs and 30 unique nonempty SDK thread IDs. Missing IDs fail the audit instead of being treated as proof.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Risks and responses</h2>
+    <table>
+      <thead><tr><th>Risk</th><th>Response</th></tr></thead>
+      <tbody>
+        <tr><td>The TypeScript SDK cannot apply the required workspace or sandbox boundary in the installed version.</td><td>Make the SDK probe the first gate. If it fails, stop and revise the runner design while keeping the SDK as the public integration point. Do not weaken isolation silently.</td></tr>
+        <tr><td>Codex sign-in works in the CLI but not the local server process.</td><td>Preflight account state before experiments and show a direct sign-in repair instruction. Never fall back to an API key automatically.</td></tr>
+        <tr><td>Parallel calls hit account or model limits.</td><td>Default concurrency to one, make it configurable, back off on retryable rate errors, and preserve job state.</td></tr>
+        <tr><td>Generated projects differ in file layout or include huge files.</td><td>Use an allowlist, byte limits, deterministic path treatment, visible failure reasons, and versioned canonicalization.</td></tr>
+        <tr><td>The adjective appears directly in source comments or names.</td><td>Flag and exclude the run from primary metrics. Do not edit the generated source because editing changes the artifact.</td></tr>
+        <tr><td>A single judge has label preferences or recognizes its own model conventions.</td><td>Label results as one-judge evidence, store probabilities, and keep schema support for later repeated and cross-model judgments.</td></tr>
+        <tr><td>Profile dimensions are vague or correlated.</td><td>Use anchored rubrics, immutable versions, raw-score inspection, and control deltas. Treat profiles as descriptions, not hidden semantics.</td></tr>
+        <tr><td>Five runs invite overinterpretation.</td><td>Show exact counts and denominator warnings. Keep run count configurable and recommend larger experiments for comparison.</td></tr>
+        <tr><td>Judge payload length exceeds model context.</td><td>Reject oversize bundles before judging and report the limit. Do not truncate silently.</td></tr>
+        <tr><td>Provider-side behavior creates dependence that local isolation cannot observe.</td><td>Record model and timing, randomize job order, and state this limit in exports and reports.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Acceptance walkthrough</h2>
+    <ol>
+      <li>Open the app and pass the Codex sign-in and isolation preflight.</li>
+      <li>Create the React settings-page experiment with five words plus the locked control and five runs per condition.</li>
+      <li>Confirm the preview shows 30 generation calls, 30 classification calls, 30 profile calls, and the final candidate list in no stable answer position.</li>
+      <li>Start, stop the app midway, restart it, and verify only unfinished or expired jobs resume.</li>
+      <li>Open the completed result. Confirm raw confusion counts add to the eligible judgment count and displayed percentages use the shown denominators.</li>
+      <li>Inspect one judgment payload from each condition. None may contain truth or generator-only metadata.</li>
+      <li>Inspect attempt records. Every model call must have a unique process/workspace pair and thread ID.</li>
+      <li>Open a word detail page and compare its five source bundles, probability distributions, and control-relative profiles.</li>
+      <li>Export JSON and recompute accuracy and matrix counts with the test utility. Results must match the UI.</li>
+      <li>Run the contamination canary suite. Any failure blocks release.</li>
+    </ol>
+  </section>
+</main>
+</body>
+</html>

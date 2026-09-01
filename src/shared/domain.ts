@@ -40,6 +40,47 @@ export const dimensionSchema = z.object({
 
 const wordSchema = z.string().trim().min(1).max(80);
 
+export const datasetSplits = ["regression", "discovery", "holdout"] as const;
+export const promptPlacements = ["inline", "suffix"] as const;
+export const evaluationChannels = ["source", "screenshot"] as const;
+
+export const recommendedWordRows = {
+  positive: ["beautiful", "lovely", "pretty", "attractive", "appealing"],
+  neutral: ["plain", "ordinary", "standard", "conventional", "typical"],
+  negative: ["unattractive", "unpleasant", "unsightly", "unappealing", "inelegant"],
+} as const;
+
+export const recommendedEverydayTasks = [
+  { id: "poem-rain", name: "Rain poem", family: "poem", split: "regression", placement: "inline", prompt: "Write a {{word}} poem about rain arriving after a dry week." },
+  { id: "poem-market", name: "Market poem", family: "poem", split: "discovery", placement: "suffix", prompt: "Write a twelve-line poem about a neighborhood market. Make it {{word}}." },
+  { id: "poem-window", name: "Window poem", family: "poem", split: "holdout", placement: "inline", prompt: "Write a {{word}} poem about light through a kitchen window." },
+  { id: "paragraph-garden", name: "Garden paragraph", family: "paragraph", split: "regression", placement: "suffix", prompt: "Write one paragraph describing a shared garden at dusk. Make it {{word}}." },
+  { id: "paragraph-commute", name: "Commute paragraph", family: "paragraph", split: "discovery", placement: "inline", prompt: "Write a {{word}} paragraph about an ordinary morning commute." },
+  { id: "paragraph-letter", name: "Letter paragraph", family: "paragraph", split: "holdout", placement: "suffix", prompt: "Write one paragraph about finding an old letter. Make it {{word}}." },
+  { id: "ui-notes", name: "Notes settings", family: "ui", split: "regression", placement: "suffix", prompt: "Build a React settings page for a note-taking application. Make it {{word}}." },
+  { id: "ui-calendar", name: "Calendar dashboard", family: "ui", split: "discovery", placement: "inline", prompt: "Build a {{word}} React dashboard for a personal calendar." },
+  { id: "ui-recipes", name: "Recipe collection", family: "ui", split: "holdout", placement: "suffix", prompt: "Build a React page for organizing saved recipes. Make it {{word}}." },
+] as const;
+
+export const taskTemplateSchema = z.object({
+  id: z.string().regex(/^[a-z][a-z0-9_-]*$/).max(80),
+  name: z.string().trim().min(1).max(120),
+  family: z.string().trim().min(1).max(80),
+  split: z.enum(datasetSplits),
+  placement: z.enum(promptPlacements),
+  prompt: z.string().min(1).max(20_000).refine(
+    (value) => value.split(PROMPT_TOKEN).length === 2,
+    `Task prompt must contain exactly one ${PROMPT_TOKEN}`,
+  ),
+});
+
+export const judgeConfigSchema = z.object({
+  id: z.string().regex(/^[a-z][a-z0-9_-]*$/).max(80),
+  model: z.string().trim().min(1).max(100),
+  reasoning: reasoningEffortSchema,
+  channels: z.array(z.enum(evaluationChannels)).min(1).max(2),
+});
+
 export const createExperimentSchema = z.object({
   name: z.string().trim().min(1).max(120),
   basePrompt: z.string().min(1).max(20_000).refine(
@@ -66,9 +107,22 @@ export const createExperimentSchema = z.object({
   judgeReasoning: reasoningEffortSchema,
   maxConcurrency: z.number().int().min(1).max(8).default(1),
   dimensions: z.array(dimensionSchema).min(1).max(30).default([...defaultDimensions]),
+  tasks: z.array(taskTemplateSchema).min(1).max(100).optional(),
+  judges: z.array(judgeConfigSchema).min(1).max(10).optional(),
+  primaryEndpoint: z.enum(["exact_modifier_accuracy", "modifier_detection_accuracy", "six_way_accuracy"])
+    .default("exact_modifier_accuracy"),
+}).superRefine((input, context) => {
+  for (const [field, values] of [["tasks", input.tasks], ["judges", input.judges]] as const) {
+    if (!values) continue;
+    const seen = new Set<string>();
+    values.forEach((value, index) => {
+      if (seen.has(value.id)) context.addIssue({ code: "custom", path: [field, index, "id"], message: "IDs must be unique" });
+      seen.add(value.id);
+    });
+  }
 });
 
-export type CreateExperimentInput = z.infer<typeof createExperimentSchema>;
+export type CreateExperimentInput = z.input<typeof createExperimentSchema>;
 
 export function normalizeWord(word: string): string {
   return word.normalize("NFKC").trim().toLocaleLowerCase("en-US");
