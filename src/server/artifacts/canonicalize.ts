@@ -20,6 +20,18 @@ export type CanonicalArtifact = {
   hash: string;
 };
 
+export function validatePlainHtmlCssArtifact(artifact: CanonicalArtifact): void {
+  const paths = artifact.manifest.map((entry) => entry.originalPath.toLowerCase());
+  if (!paths.includes("index.html")) throw new Error("Plain HTML artifact must include index.html");
+  if (!paths.includes("styles.css")) throw new Error("Plain HTML artifact must include styles.css");
+  const forbidden = paths.filter((file) => /\.(?:js|jsx|ts|tsx)$/.test(file));
+  if (forbidden.length) throw new Error("Plain HTML artifact cannot include JavaScript or React files");
+  if (paths.length !== 2 || paths.some((file) => !["index.html", "styles.css"].includes(file))) {
+    throw new Error("Plain HTML artifact must contain only index.html and styles.css");
+  }
+  if (/<script\b|javascript:/i.test(artifact.bundle)) throw new Error("Plain HTML artifact cannot include JavaScript");
+}
+
 async function walk(root: string, current = root): Promise<string[]> {
   const entries = await readdir(current, { withFileTypes: true });
   const paths: string[] = [];

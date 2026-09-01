@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { canonicalizeWorkspace, containsWordLeak } from "@/server/artifacts/canonicalize";
+import { canonicalizeWorkspace, containsWordLeak, validatePlainHtmlCssArtifact } from "@/server/artifacts/canonicalize";
 
 const roots: string[] = [];
 afterEach(async () => Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))));
@@ -27,5 +27,21 @@ describe("artifact canonicalization", () => {
   it("detects whole-word leaks case-insensitively", () => {
     expect(containsWordLeak("// An ELEGANT solution", "elegant")).toBe(true);
     expect(containsWordLeak("const elegantlyNamed = true", "elegant")).toBe(false);
+  });
+
+  it("requires plain UI artifacts to be HTML and CSS only", () => {
+    const artifact = {
+      bundle: "",
+      bytes: 0,
+      hash: "",
+      manifest: [
+        { ordinalPath: "file-001.html", originalPath: "index.html", bytes: 10 },
+        { ordinalPath: "file-002.css", originalPath: "styles.css", bytes: 10 },
+      ],
+    };
+    expect(() => validatePlainHtmlCssArtifact(artifact)).not.toThrow();
+    expect(() => validatePlainHtmlCssArtifact({ ...artifact, manifest: [...artifact.manifest, { ordinalPath: "file-003.tsx", originalPath: "App.tsx", bytes: 10 }] })).toThrow(/JavaScript or React/);
+    expect(() => validatePlainHtmlCssArtifact({ ...artifact, manifest: [...artifact.manifest, { ordinalPath: "file-003.md", originalPath: "README.md", bytes: 10 }] })).toThrow(/only index.html and styles.css/);
+    expect(() => validatePlainHtmlCssArtifact({ ...artifact, manifest: [artifact.manifest[0]] })).toThrow(/styles.css/);
   });
 });

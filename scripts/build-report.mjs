@@ -3,7 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
-const outputPath = path.join(root, ".agent", "artifacts", "words-of-meaning-report.html");
+const outputPath = path.join(root, ".agents", "artifacts", "words-of-meaning-luna-report.html");
 const inputPaths = process.argv.slice(2);
 if (inputPaths.length === 0) inputPaths.push("five-runs-per-condition-export.json");
 
@@ -29,6 +29,13 @@ try {
   const oldReport = await readFile(outputPath, "utf8");
   screenshots = [...oldReport.matchAll(/<img src="(data:image\/jpeg;base64,[^"]+)"/g)].map((match) => match[1]).slice(0, 6);
 } catch {}
+if (screenshots.length === 0 && process.env.WORDS_REPORT_SCREENSHOT_DIR) {
+  const labels = ["control", "lovely", "beautiful", "elegant", "polished", "refined"];
+  screenshots = await Promise.all(labels.map(async (label) => {
+    const bytes = await readFile(path.join(process.env.WORDS_REPORT_SCREENSHOT_DIR, `${label}.jpg`));
+    return `data:image/jpeg;base64,${bytes.toString("base64")}`;
+  }));
+}
 
 const successfulAttempts = (dataset) => dataset.data.attempts.filter((attempt) => attempt.exit_code === 0);
 const attemptsForRun = (dataset, run) => {
@@ -37,11 +44,17 @@ const attemptsForRun = (dataset, run) => {
     attempt.exit_code === 0 && (attempt.target_id === run.id || attempt.target_id === judgmentId));
 };
 const conditionName = (run) => run.word || "control";
-const taskName = (dataset) => {
+const datasetTasks = (dataset) => Array.isArray(dataset.data.tasks) ? dataset.data.tasks : [];
+const isUiDataset = (dataset) => datasetTasks(dataset).some((task) => task.family === "ui") || /ui|react|design/i.test(String(dataset.data.experiment.name || ""));
+const isWritingDataset = (dataset) => datasetTasks(dataset).length ? datasetTasks(dataset).every((task) => task.family !== "ui") : /poem|paragraph|writing/i.test(String(dataset.data.experiment.name || ""));
+const taskName = (dataset, run = null) => {
+  if (run?.task_name) return String(run.task_name);
+  if (datasetTasks(dataset).length === 1) return String(datasetTasks(dataset)[0].name);
+  if (datasetTasks(dataset).length > 1 && isUiDataset(dataset)) return "Static HTML/CSS designs";
   const name = String(dataset.data.experiment.name || "");
   if (/poem/i.test(name)) return "Poem";
   if (/paragraph/i.test(name)) return "Paragraph";
-  return "React UI";
+  return "Static HTML/CSS design";
 };
 const rowName = (dataset) => {
   const name = String(dataset.data.experiment.name || "");
@@ -70,10 +83,10 @@ function wilson(n, k, z = 1.959963984540054) {
   return [Math.max(0, center - margin), Math.min(1, center + margin)];
 }
 
-const writing = datasets.filter((dataset) => taskName(dataset) !== "React UI");
-const writingRuns = writing.flatMap((dataset) => dataset.data.runs.filter((run) => run.judgment_status === "succeeded" && !run.word_leak));
+const writing = datasets.filter(isWritingDataset);
+const writingRuns = writing.flatMap((dataset) => dataset.data.runs.filter((run) => run.judgment_status === "succeeded" && !run.word_leak && !run.is_control));
 const writingCorrect = writingRuns.filter((run) => run.prediction === conditionName(run)).length;
-const writingChance = writing.length ? 1 / 6 : 0;
+const writingChance = writing.length ? 1 / 5 : 0;
 const writingInterval = wilson(writingRuns.length, writingCorrect);
 const writingP = writingRuns.length ? binomialTail(writingRuns.length, writingCorrect, writingChance) : 0;
 
@@ -108,7 +121,7 @@ function recallTable(dataset) {
 function profileTable(dataset) {
   const profiles = dataset.data.metrics.profiles || {};
   const dimensions = parse(dataset.data.experiment.dimensions_json, []);
-  const labels = dataset.data.metrics.labels || [];
+  const labels = dataset.data.conditions.map((condition) => condition.is_control ? "control" : condition.word);
   return `<details><summary>${escapeHtml(taskName(dataset))}, ${escapeHtml(rowName(dataset))} behavioral means</summary><div class="table-wrap"><table><thead><tr><th>Condition</th>${dimensions.map((d) => `<th>${escapeHtml(d.label)}</th>`).join("")}</tr></thead><tbody>${labels.map((label) => `<tr><th>${escapeHtml(title(label))}</th>${dimensions.map((d) => `<td>${profiles[label]?.[d.key]?.mean == null ? "n/a" : fixed(profiles[label][d.key].mean, 1)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></details>`;
 }
 
@@ -119,7 +132,7 @@ function probabilityLine(run) {
 
 function outputText(dataset, run) {
   const bundle = String(run.artifact_bundle || "");
-  if (taskName(dataset) !== "React UI") return bundle.replace(/^=== file-\d+\.md ===\n/, "").trim();
+  if (!isUiDataset(dataset)) return bundle.replace(/^=== file-\d+\.md ===\n/, "").trim();
   const manifest = parse(run.artifact_manifest_json, []);
   const excerpt = bundle.slice(0, 500).trim();
   return `Files: ${manifest.map((file) => `${file.originalPath} (${file.bytes} bytes)`).join(", ")}\n\nSource excerpt:\n${excerpt}${bundle.length > excerpt.length ? "\n\n[Full source is in the linked JSON export.]" : ""}`;
@@ -129,11 +142,14 @@ function runCard(dataset, run) {
   const attempts = attemptsForRun(dataset, run);
   const profiles = parse(run.profile_scores_json);
   const modifier = run.modifier_present_probability == null ? null : run.modifier_present_probability / 1_000_000;
-  const correct = run.prediction === conditionName(run);
+  const correct = run.is_control
+    ? modifier !== null && modifier < 0.5
+    : run.prediction === conditionName(run);
   const excluded = Boolean(run.word_leak);
   const scoreLine = Object.entries(profiles).map(([key, value]) => `${escapeHtml(title(key))} ${value ?? "n/a"}`).join(" · ");
   const isolationLines = attempts.map((attempt) => `${title(attempt.kind)} | PID ${attempt.process_id} | thread ${shortId(attempt.thread_id)} | workspace ${shortId(attempt.isolation_id)}`).join("\n");
-  return `<details class="run"><summary><span>${escapeHtml(taskName(dataset))} · ${escapeHtml(rowName(dataset))} · ${escapeHtml(title(conditionName(run)))} · run ${run.run_index}</span><span class="${excluded ? "wrong" : correct ? "correct" : "wrong"}">${excluded ? "Excluded word leak" : escapeHtml(title(run.prediction || "no judgment"))}</span></summary><div class="run-body"><p><strong>True:</strong> ${escapeHtml(title(conditionName(run)))} · <strong>Blind prediction:</strong> ${escapeHtml(title(run.prediction))} · <strong>Modifier present:</strong> ${modifier == null ? "n/a" : pct(modifier)}${excluded ? " · <strong>Excluded from scoring because the output repeats the hidden word.</strong>" : ""}</p><p class="compact"><strong>Probabilities:</strong> ${probabilityLine(run)}</p><p class="compact"><strong>Behavioral scores:</strong> ${scoreLine}</p><p class="compact"><strong>Artifact:</strong> ${run.artifact_bytes} bytes · <code>${escapeHtml(run.artifact_hash)}</code></p><details class="isolation"><summary>Three fresh-call records</summary><pre>${escapeHtml(isolationLines)}</pre></details><h4>Generated output</h4><pre>${escapeHtml(outputText(dataset, run))}</pre></div></details>`;
+  const judgmentLabel = run.is_control ? `Modifier ${modifier !== null && modifier >= 0.5 ? "detected" : "not detected"}` : title(run.prediction || "no judgment");
+  return `<details class="run"><summary><span>${escapeHtml(taskName(dataset, run))} · ${escapeHtml(rowName(dataset))} · ${escapeHtml(title(conditionName(run)))} · run ${run.run_index}</span><span class="${excluded ? "wrong" : correct ? "correct" : "wrong"}">${excluded ? "Excluded word leak" : escapeHtml(judgmentLabel)}</span></summary><div class="run-body"><p><strong>True:</strong> ${escapeHtml(title(conditionName(run)))} · <strong>Conditional adjective prediction:</strong> ${escapeHtml(title(run.prediction))} · <strong>Modifier present:</strong> ${modifier == null ? "n/a" : pct(modifier)}${run.is_control ? " · <strong>Control excluded from exact-word scoring.</strong>" : ""}${excluded ? " · <strong>Excluded from scoring because the output repeats the hidden word.</strong>" : ""}</p><p class="compact"><strong>Adjective probabilities:</strong> ${probabilityLine(run)}</p><p class="compact"><strong>Behavioral scores:</strong> ${scoreLine}</p><p class="compact"><strong>Artifact:</strong> ${run.artifact_bytes} bytes · <code>${escapeHtml(run.artifact_hash)}</code></p><details class="isolation"><summary>Three fresh-call records</summary><pre>${escapeHtml(isolationLines)}</pre></details><h4>Generated output</h4><pre>${escapeHtml(outputText(dataset, run))}</pre></div></details>`;
 }
 
 function exampleCard(dataset, word) {
@@ -148,7 +164,7 @@ const writingExamples = writing.flatMap((dataset) => {
 }).join("");
 
 const screenshotLabels = ["Control", "Lovely", "Beautiful", "Elegant", "Polished", "Refined"];
-const screenshotHtml = screenshots.map((src, index) => `<figure><img src="${src}" alt="${screenshotLabels[index]} React settings page run"><figcaption><strong>${screenshotLabels[index]}, run 1</strong><span>Rendered from the generated React and CSS files.</span></figcaption></figure>`).join("");
+const screenshotHtml = screenshots.map((src, index) => `<figure><img src="${src}" alt="${screenshotLabels[index]} static HTML/CSS design run"><figcaption><strong>${screenshotLabels[index]}, run 1</strong><span>Rendered from the generated static HTML and CSS files.</span></figcaption></figure>`).join("");
 
 const allSuccessful = datasets.flatMap(successfulAttempts);
 const allAttempts = datasets.flatMap((dataset) => dataset.data.attempts);
@@ -164,13 +180,13 @@ const html = `<!doctype html>
 :root{color-scheme:light;--ink:#20231f;--muted:#626960;--line:#d8ddd4;--paper:#fafbf8;--panel:#fff;--green:#365e48;--soft:#e9f1eb;--amber:#865912;--amber-soft:#fff3d8;--red:#8b3636;--red-soft:#fbeaea}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}main{width:min(1200px,calc(100% - 28px));margin:auto;padding:30px 0 60px}header{border-bottom:2px solid var(--ink);padding-bottom:18px}h1{margin:3px 0 8px;font:700 clamp(29px,5vw,45px)/1.08 Georgia,serif;letter-spacing:-.025em}h2{margin:0 0 12px;font:700 24px/1.2 Georgia,serif}h3,h4{margin:0 0 7px}h4{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}p{margin:0 0 10px}.kicker,.label{color:var(--green);font-size:12px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.lede{max-width:880px;color:#454a43;font-size:17px}.meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:14px;color:var(--muted);font-size:13px}section{margin-top:30px}.summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.metric,.card,.mini-card,.example{padding:15px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}.metric strong{display:block;margin:7px 0 2px;font:700 25px/1 Georgia,serif}.metric small,.note{color:var(--muted);font-size:13px}.verdict,.callout{padding:14px 16px;border-left:4px solid var(--amber);background:var(--amber-soft)}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,td{padding:8px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}thead th{color:var(--muted);font-size:12px}.matrix td{text-align:center}.diag{background:var(--soft);color:var(--green);font-weight:750}.miss{background:#f4f5f2}.matrices,.profiles{display:grid;gap:8px}.recalls,.examples{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.rank,.prob{display:grid;grid-template-columns:92px 1fr 55px;gap:8px;align-items:center;margin:6px 0}.rank i,.prob i{height:8px;overflow:hidden;border-radius:9px;background:#ecefe9}.rank b,.prob b{display:block;height:100%;background:var(--green)}.rank strong,.prob strong{text-align:right;font-size:12px}details{border:1px solid var(--line);border-radius:7px;background:var(--panel)}summary{padding:11px 13px;cursor:pointer;font-weight:650}details[open]>summary{border-bottom:1px solid var(--line)}.matrix-block .table-wrap,.profiles .table-wrap{padding:8px}.screens{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}figure{margin:0;overflow:hidden;border:1px solid var(--line);border-radius:8px;background:white}figure img{display:block;width:100%}figcaption{padding:9px 11px;border-top:1px solid var(--line)}figcaption strong,figcaption span{display:block}figcaption span{color:var(--muted);font-size:12px}.run-list{display:grid;gap:7px}.run summary{display:flex;justify-content:space-between;gap:12px}.correct{color:var(--green)}.wrong{color:var(--red)}.run-body{padding:14px}.run-grid{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:16px}dl{margin:0}dl div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding:4px 0}dd{margin:0;font-weight:700}.attempt{font-size:12px}.attempt code,.run code{overflow-wrap:anywhere}pre{max-height:420px;overflow:auto;margin:8px 0 0;padding:12px;border-radius:6px;background:#f1f3ef;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}.example pre{max-height:300px}.audit{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.audit div{padding:14px;border:1px solid #bed0c2;background:var(--soft);border-radius:8px}.audit strong{display:block;color:var(--green);font-size:22px}code{font:12px ui-monospace,SFMono-Regular,Consolas,monospace}ul{padding-left:20px}footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}a{color:var(--green)}
 @media(max-width:900px){.summary{grid-template-columns:repeat(3,1fr)}.recalls,.examples{grid-template-columns:repeat(2,1fr)}.run-grid{grid-template-columns:1fr 1fr}}@media(max-width:620px){main{width:min(100% - 18px,1200px);padding-top:18px}.summary,.recalls,.examples,.screens,.audit,.run-grid{grid-template-columns:1fr}.run summary{display:block}.run summary span{display:block}.metric{min-height:0}th,td{padding:7px}.prob,.rank{grid-template-columns:78px 1fr 50px}}
 </style></head><body><main>
-<header><p class="kicker">Blind prompt-identification benchmark</p><h1>Do descriptive words leave a visible trace?</h1><p class="lede">This benchmark tests whether a blind judge can recover a descriptive word from model output. It measures observable behavior. It cannot establish that a model has a specific hidden definition of "lovely," "beautiful," or any other word.</p><div class="meta"><span>Generated September 1, 2026</span><span>Generator and judge: GPT-5.6 Terra</span><span>5 runs per condition</span><span>${runCount} outputs in this report</span></div></header>
+<header><p class="kicker">Blind prompt-identification benchmark</p><h1>Do descriptive words leave a visible trace?</h1><p class="lede">This benchmark tests whether a blind judge can recover a descriptive word from model output. It measures observable behavior. It cannot establish that a model has a specific hidden definition of "lovely," "beautiful," or any other word.</p><div class="meta"><span>Generated September 1, 2026</span><span>Generator and judge: ${escapeHtml(datasets[0].data.experiment.generator_model)}, ${escapeHtml(datasets[0].data.experiment.generator_reasoning)} reasoning</span><span>5 runs per condition</span><span>${runCount} outputs in this report</span></div></header>
 
-<section><h2>Expanded writing result</h2>${writingRuns.length ? `<div class="summary"><div class="metric"><span class="label">Accuracy</span><strong>${pct(writingCorrect / writingRuns.length)}</strong><small>${writingCorrect} correct of ${writingRuns.length}</small></div><div class="metric"><span class="label">Chance</span><strong>${pct(writingChance)}</strong><small>Six labels within each row</small></div><div class="metric"><span class="label">Exact p-value</span><strong>${fixed(writingP,3)}</strong><small>One-sided binomial test</small></div><div class="metric"><span class="label">95% interval</span><strong>${pct(writingInterval[0])} to ${pct(writingInterval[1])}</strong><small>Wilson interval</small></div><div class="metric"><span class="label">Writing outputs</span><strong>${writingRuns.length}</strong><small>Poems and paragraphs</small></div></div><p class="verdict"><strong>${writingP < .05 ? "The writing classifier scored above chance." : "The writing classifier did not score above chance."}</strong> This statement applies to the pooled writing runs. The row-level table below shows where the signal came from.</p>` : `<p class="callout">Writing experiments are still running. This draft contains the completed React UI benchmark.</p>`}</section>
+<section><h2>Expanded writing result</h2>${writingRuns.length ? `<div class="summary"><div class="metric"><span class="label">Accuracy</span><strong>${pct(writingCorrect / writingRuns.length)}</strong><small>${writingCorrect} correct of ${writingRuns.length}</small></div><div class="metric"><span class="label">Chance</span><strong>${pct(writingChance)}</strong><small>Five adjective labels within each row</small></div><div class="metric"><span class="label">Exact p-value</span><strong>${fixed(writingP,3)}</strong><small>One-sided binomial test</small></div><div class="metric"><span class="label">95% interval</span><strong>${pct(writingInterval[0])} to ${pct(writingInterval[1])}</strong><small>Wilson interval</small></div><div class="metric"><span class="label">Writing outputs</span><strong>${writingRuns.length}</strong><small>Non-control poems and paragraphs</small></div></div><p class="verdict"><strong>${writingP < .05 ? "The writing classifier scored above chance." : "The writing classifier did not score above chance."}</strong> This statement applies to the pooled non-control writing runs. The row-level table below shows where the signal came from.</p>` : `<p class="callout">Writing experiments are still running. This draft contains the completed static HTML/CSS design benchmark.</p>`}</section>
 
-<section><h2>Design</h2><div class="table-wrap card"><table><thead><tr><th>Task</th><th>Word row</th><th>Conditions</th><th>Runs each</th><th>Outputs</th></tr></thead><tbody>${datasets.map((dataset) => `<tr><th>${escapeHtml(taskName(dataset))}</th><td>${escapeHtml(rowName(dataset))}</td><td>${dataset.data.conditions.length}</td><td>${dataset.data.experiment.runs_per_condition}</td><td>${dataset.data.runs.length}</td></tr>`).join("")}</tbody></table></div><p class="note">Writing rows use five familiar related words plus a no-modifier control. Each judge sees only the six labels in its own row. Positive, neutral, and negative rows never share a judging call.</p></section>
+<section><h2>Design</h2><div class="table-wrap card"><table><thead><tr><th>Task block</th><th>Design briefs</th><th>Word row</th><th>Conditions/design</th><th>Runs each</th><th>Outputs</th></tr></thead><tbody>${datasets.map((dataset) => `<tr><th>${escapeHtml(taskName(dataset))}</th><td>${escapeHtml(datasetTasks(dataset).map((task) => task.name).join(", ") || taskName(dataset))}</td><td>${escapeHtml(rowName(dataset))}</td><td>${dataset.data.conditions.length}</td><td>${dataset.data.experiment.runs_per_condition}</td><td>${dataset.data.runs.length}</td></tr>`).join("")}</tbody></table></div><p class="note">Each design brief generates five adjective conditions plus a no-modifier control. Exact identification compares only the five adjectives. The control is evaluated separately through modifier detection and as the behavioral-profile baseline.</p></section>
 
-<section><h2>Statistical results by task and row</h2><div class="table-wrap card"><table><thead><tr><th>Task</th><th>Row</th><th>Correct</th><th>Accuracy</th><th>Chance</th><th>Exact p</th><th>Wilson 95%</th><th>p &lt; 0.05</th></tr></thead><tbody>${resultRows()}</tbody></table></div><p class="note">The exact test is one-sided. The table uses p &lt; 0.05 without correction. A Bonferroni threshold across these seven rows is 0.0071. The negative poem row passes that threshold; the negative paragraph row does not.</p></section>
+<section><h2>Statistical results by task and row</h2><div class="table-wrap card"><table><thead><tr><th>Task</th><th>Row</th><th>Correct</th><th>Accuracy</th><th>Chance</th><th>Exact p</th><th>Wilson 95%</th><th>p &lt; 0.05</th></tr></thead><tbody>${resultRows()}</tbody></table></div><p class="note">The exact test is one-sided. The table uses p &lt; 0.05 without correction. A Bonferroni threshold across these seven rows is 0.0071. Both negative rows pass that corrected threshold.</p></section>
 
 <section><h2>Confusion matrices</h2><p class="note">Open a task and row. Rows are true conditions and columns are blind predictions.</p><div class="matrices">${datasets.map(confusionTable).join("")}</div></section>
 
@@ -178,13 +194,13 @@ const html = `<!doctype html>
 
 ${writingExamples ? `<section><h2>Everyday writing examples</h2><p class="note">These are first runs, chosen by a fixed rule before reading their content. Open all runs later in the report to compare every poem and paragraph.</p><div class="examples">${writingExamples}</div></section>` : ""}
 
-${screenshotHtml ? `<section><h2>React examples</h2><p class="note">Run 1 from each original UI condition, rendered from its generated React and CSS files.</p><div class="screens">${screenshotHtml}</div></section>` : ""}
+${screenshotHtml ? `<section><h2>Static HTML/CSS examples</h2><p class="note">Representative runs from the UI conditions, rendered from generated <code>index.html</code> and <code>styles.css</code>.</p><div class="screens">${screenshotHtml}</div></section>` : ""}
 
 <section><h2>Behavioral profiles</h2><p class="note">A separate blind evaluator scored observable output properties from 1 to 7. These are descriptive means, not proof of a hidden definition.</p><div class="profiles">${datasets.map(profileTable).join("")}</div></section>
 
-<section><h2>Isolation audit</h2><div class="audit"><div><strong>${processCount} / ${allSuccessful.length}</strong><span>distinct successful process IDs</span></div><div><strong>${threadCount} / ${allSuccessful.length}</strong><span>distinct successful thread IDs</span></div><div><strong>${workspaceCount} / ${allSuccessful.length}</strong><span>distinct successful workspace IDs</span></div></div><ul><li>Every generation, classification, and profile call used a new OS process, SDK client, Codex thread, temporary workspace, and temporary Codex home.</li><li>The judge received the neutral task, one canonical artifact, and a randomized candidate order. It did not receive the true word, run number, experiment name, or another run.</li><li>The parent process joined true labels to judgments only during scoring.</li><li>${rejectedAttempts.length} rejected or interrupted attempts remain in the exports. Every retry used a new process, thread, workspace, and home.</li><li>${leakedRuns.length} output repeated its hidden word and was excluded before scoring.</li></ul></section>
+<section><h2>Isolation audit</h2><div class="audit"><div><strong>${processCount} / ${allSuccessful.length}</strong><span>distinct successful process IDs</span></div><div><strong>${threadCount} / ${allSuccessful.length}</strong><span>distinct successful thread IDs</span></div><div><strong>${workspaceCount} / ${allSuccessful.length}</strong><span>distinct successful workspace IDs</span></div></div><ul><li>Every generation, classification, and profile call used a new OS process, SDK client, Codex thread, temporary workspace, and temporary Codex home.</li><li>The judge received the neutral task, one canonical artifact, and a randomized candidate order. It did not receive the true word, run number, experiment name, or another run.</li><li>The parent process joined true labels to judgments only during scoring.</li><li>630 job results were accepted. ${allSuccessful.length - 630} successful attempts completed after a lease restart and were superseded; they remain in the audit export.</li><li>${rejectedAttempts.length} rejected or interrupted attempts remain in the exports. Every retry used a new process, thread, workspace, and home.</li><li>${leakedRuns.length} output repeated its hidden word and was excluded before scoring.</li></ul></section>
 
-<section><h2>All ${runCount} runs</h2><p class="note">Every run is listed below, including the excluded word leak. Open any row to inspect its judgment, probability distribution, behavioral scores, artifact identity, and call-by-call isolation evidence. The IDs are shortened here; the exports contain the full values. Writing output appears in full. React source is excerpted to keep this self-contained report below 512 KB.</p><div class="run-list">${datasets.flatMap((dataset) => dataset.data.runs.map((run) => runCard(dataset, run))).join("")}</div></section>
+<section><h2>All ${runCount} runs</h2><p class="note">Every run is listed below, including the excluded word leak. Open any row to inspect its judgment, probability distribution, behavioral scores, artifact identity, and call-by-call isolation evidence. The IDs are shortened here; the exports contain the full values. Writing output appears in full. Static HTML/CSS source is excerpted to keep this self-contained report compact.</p><div class="run-list">${datasets.flatMap((dataset) => dataset.data.runs.map((run) => runCard(dataset, run))).join("")}</div></section>
 
 <section class="callout"><h2>How to read this</h2><ul><li>Accuracy above chance means the modifier changed output in a way this judge could recognize.</li><li>Accuracy at chance does not prove that the words had no effect. The effect may be weak, inconsistent, or invisible to this judge.</li><li>Five runs per condition are enough to expose large differences, but one error moves condition recall by 20 percentage points.</li><li>The pooled writing test has more samples. It still combines tasks and word rows, so the row-level results matter.</li></ul></section>
 

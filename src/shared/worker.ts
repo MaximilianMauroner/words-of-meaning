@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { dimensionSchema, reasoningEffortSchema } from "./domain";
+import { artifactFormatSchema, dimensionSchema, reasoningEffortSchema } from "./domain";
 
 const settingsSchema = z.object({
   model: z.string().min(1),
@@ -10,6 +10,7 @@ export const generateEnvelopeSchema = z.object({
   kind: z.literal("generate"),
   settings: settingsSchema,
   prompt: z.string().min(1),
+  artifactFormat: artifactFormatSchema.optional(),
 });
 
 export const classifyEnvelopeSchema = z.object({

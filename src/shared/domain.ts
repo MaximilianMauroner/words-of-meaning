@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const CONTROL_LABEL = "control";
 export const PROMPT_TOKEN = "{{word}}";
+export const FIXED_BENCHMARK_MODEL = "gpt-5.6-luna";
+export const FIXED_BENCHMARK_REASONING = "max" as const;
 
 export const reasoningEfforts = [
   "low",
@@ -43,6 +45,9 @@ const wordSchema = z.string().trim().min(1).max(80);
 export const datasetSplits = ["regression", "discovery", "holdout"] as const;
 export const promptPlacements = ["inline", "suffix"] as const;
 export const evaluationChannels = ["source", "screenshot"] as const;
+export const artifactFormats = ["plain_html_css", "markdown"] as const;
+export const artifactFormatSchema = z.enum(artifactFormats);
+export type ArtifactFormat = z.infer<typeof artifactFormatSchema>;
 
 export const recommendedWordRows = {
   positive: ["beautiful", "lovely", "pretty", "attractive", "appealing"],
@@ -57,10 +62,11 @@ export const recommendedEverydayTasks = [
   { id: "paragraph-garden", name: "Garden paragraph", family: "paragraph", split: "regression", placement: "suffix", prompt: "Write one paragraph describing a shared garden at dusk. Make it {{word}}." },
   { id: "paragraph-commute", name: "Commute paragraph", family: "paragraph", split: "discovery", placement: "inline", prompt: "Write a {{word}} paragraph about an ordinary morning commute." },
   { id: "paragraph-letter", name: "Letter paragraph", family: "paragraph", split: "holdout", placement: "suffix", prompt: "Write one paragraph about finding an old letter. Make it {{word}}." },
-  { id: "ui-notes", name: "Notes settings", family: "ui", split: "regression", placement: "suffix", prompt: "Build a React settings page for a note-taking application. Make it {{word}}." },
-  { id: "ui-calendar", name: "Calendar dashboard", family: "ui", split: "discovery", placement: "inline", prompt: "Build a {{word}} React dashboard for a personal calendar." },
-  { id: "ui-recipes", name: "Recipe collection", family: "ui", split: "holdout", placement: "suffix", prompt: "Build a React page for organizing saved recipes. Make it {{word}}." },
+  { id: "ui-notes", name: "Notes settings", family: "ui", split: "regression", placement: "suffix", prompt: "Build a {{word}} static HTML and CSS settings page for a note-taking application. Create only index.html and styles.css; do not use React or JavaScript." },
+  { id: "ui-calendar", name: "Calendar dashboard", family: "ui", split: "discovery", placement: "inline", prompt: "Build a {{word}} static HTML and CSS dashboard for a personal calendar. Create only index.html and styles.css; do not use React or JavaScript." },
+  { id: "ui-recipes", name: "Recipe collection", family: "ui", split: "holdout", placement: "suffix", prompt: "Build a {{word}} static HTML and CSS page for organizing saved recipes. Create only index.html and styles.css; do not use React or JavaScript." },
 ] as const;
+export const recommendedDesignTasks = recommendedEverydayTasks.filter((task) => task.family === "ui");
 
 export const taskTemplateSchema = z.object({
   id: z.string().regex(/^[a-z][a-z0-9_-]*$/).max(80),
@@ -72,6 +78,7 @@ export const taskTemplateSchema = z.object({
     (value) => value.split(PROMPT_TOKEN).length === 2,
     `Task prompt must contain exactly one ${PROMPT_TOKEN}`,
   ),
+  outputFormat: artifactFormatSchema.optional(),
 });
 
 export const judgeConfigSchema = z.object({
@@ -109,7 +116,7 @@ export const createExperimentSchema = z.object({
   dimensions: z.array(dimensionSchema).min(1).max(30).default([...defaultDimensions]),
   tasks: z.array(taskTemplateSchema).min(1).max(100).optional(),
   judges: z.array(judgeConfigSchema).min(1).max(10).optional(),
-  primaryEndpoint: z.enum(["exact_modifier_accuracy", "modifier_detection_accuracy", "six_way_accuracy"])
+  primaryEndpoint: z.enum(["exact_modifier_accuracy", "modifier_detection_accuracy"])
     .default("exact_modifier_accuracy"),
 }).superRefine((input, context) => {
   for (const [field, values] of [["tasks", input.tasks], ["judges", input.judges]] as const) {
@@ -120,6 +127,11 @@ export const createExperimentSchema = z.object({
       seen.add(value.id);
     });
   }
+  input.tasks?.forEach((task, index) => {
+    if (task.family === "ui" && task.outputFormat === "markdown") {
+      context.addIssue({ code: "custom", path: ["tasks", index, "outputFormat"], message: "UI design tasks must use plain_html_css" });
+    }
+  });
 });
 
 export type CreateExperimentInput = z.input<typeof createExperimentSchema>;

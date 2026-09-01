@@ -32,12 +32,19 @@ function createClient() {
       word TEXT, normalized_word TEXT NOT NULL, is_control INTEGER NOT NULL, display_order INTEGER NOT NULL,
       UNIQUE(experiment_id, normalized_word), UNIQUE(experiment_id, display_order)
     );
+    CREATE TABLE IF NOT EXISTS tasks (
+      id TEXT PRIMARY KEY, experiment_id TEXT NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
+      task_key TEXT NOT NULL, name TEXT NOT NULL, family TEXT NOT NULL, split TEXT NOT NULL,
+      placement TEXT NOT NULL, prompt TEXT NOT NULL, neutral_task TEXT NOT NULL,
+      output_format TEXT NOT NULL, display_order INTEGER NOT NULL,
+      UNIQUE(experiment_id, task_key), UNIQUE(experiment_id, display_order)
+    );
     CREATE TABLE IF NOT EXISTS generations (
       id TEXT PRIMARY KEY, experiment_id TEXT NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
-      condition_id TEXT NOT NULL REFERENCES conditions(id) ON DELETE CASCADE, run_index INTEGER NOT NULL,
+      condition_id TEXT NOT NULL REFERENCES conditions(id) ON DELETE CASCADE,
+      task_id TEXT REFERENCES tasks(id) ON DELETE CASCADE, run_index INTEGER NOT NULL,
       status TEXT NOT NULL, artifact_bundle TEXT, artifact_manifest_json TEXT, artifact_hash TEXT,
-      artifact_bytes INTEGER, word_leak INTEGER NOT NULL DEFAULT 0, error TEXT,
-      UNIQUE(condition_id, run_index)
+      artifact_bytes INTEGER, word_leak INTEGER NOT NULL DEFAULT 0, error TEXT
     );
     CREATE TABLE IF NOT EXISTS judgments (
       id TEXT PRIMARY KEY, generation_id TEXT NOT NULL REFERENCES generations(id) ON DELETE CASCADE,
@@ -60,6 +67,26 @@ function createClient() {
     CREATE INDEX IF NOT EXISTS jobs_state_idx ON jobs(state, created_at);
     CREATE INDEX IF NOT EXISTS generations_experiment_idx ON generations(experiment_id);
   `);
+  const generationColumns = sqlite.prepare("PRAGMA table_info(generations)").all() as Array<{ name: string }>;
+  if (!generationColumns.some((column) => column.name === "task_id")) {
+    // Rebuild the legacy table so its old UNIQUE(condition_id, run_index)
+    // constraint cannot prevent the same word being run for several tasks.
+    sqlite.exec("PRAGMA foreign_keys=OFF");
+    sqlite.exec(`CREATE TABLE generations_new (
+      id TEXT PRIMARY KEY, experiment_id TEXT NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
+      condition_id TEXT NOT NULL REFERENCES conditions(id) ON DELETE CASCADE,
+      task_id TEXT REFERENCES tasks(id) ON DELETE CASCADE, run_index INTEGER NOT NULL,
+      status TEXT NOT NULL, artifact_bundle TEXT, artifact_manifest_json TEXT, artifact_hash TEXT,
+      artifact_bytes INTEGER, word_leak INTEGER NOT NULL DEFAULT 0, error TEXT
+    )`);
+    sqlite.exec(`INSERT INTO generations_new
+      (id, experiment_id, condition_id, task_id, run_index, status, artifact_bundle, artifact_manifest_json,
+       artifact_hash, artifact_bytes, word_leak, error)
+      SELECT id, experiment_id, condition_id, NULL, run_index, status, artifact_bundle, artifact_manifest_json,
+       artifact_hash, artifact_bytes, word_leak, error FROM generations`);
+    sqlite.exec("DROP TABLE generations; ALTER TABLE generations_new RENAME TO generations; PRAGMA foreign_keys=ON");
+  }
+  sqlite.exec("CREATE UNIQUE INDEX IF NOT EXISTS generations_condition_task_run_unique ON generations(condition_id, task_id, run_index); CREATE INDEX IF NOT EXISTS generations_experiment_idx ON generations(experiment_id)");
   return { sqlite, db: drizzle(sqlite, { schema }) };
 }
 

@@ -33,10 +33,28 @@ export const conditions = sqliteTable("conditions", {
   uniqueIndex("conditions_experiment_order_unique").on(table.experimentId, table.displayOrder),
 ]);
 
+export const tasks = sqliteTable("tasks", {
+  id: text("id").primaryKey(),
+  experimentId: text("experiment_id").notNull().references(() => experiments.id, { onDelete: "cascade" }),
+  taskKey: text("task_key").notNull(),
+  name: text("name").notNull(),
+  family: text("family").notNull(),
+  split: text("split").notNull(),
+  placement: text("placement").notNull(),
+  prompt: text("prompt").notNull(),
+  neutralTask: text("neutral_task").notNull(),
+  outputFormat: text("output_format").notNull(),
+  displayOrder: integer("display_order").notNull(),
+}, (table) => [
+  uniqueIndex("tasks_experiment_key_unique").on(table.experimentId, table.taskKey),
+  uniqueIndex("tasks_experiment_order_unique").on(table.experimentId, table.displayOrder),
+]);
+
 export const generations = sqliteTable("generations", {
   id: text("id").primaryKey(),
   experimentId: text("experiment_id").notNull().references(() => experiments.id, { onDelete: "cascade" }),
   conditionId: text("condition_id").notNull().references(() => conditions.id, { onDelete: "cascade" }),
+  taskId: text("task_id").references(() => tasks.id, { onDelete: "cascade" }),
   runIndex: integer("run_index").notNull(),
   status: text("status").notNull(),
   artifactBundle: text("artifact_bundle"),
@@ -45,7 +63,7 @@ export const generations = sqliteTable("generations", {
   artifactBytes: integer("artifact_bytes"),
   wordLeak: integer("word_leak", { mode: "boolean" }).notNull().default(false),
   error: text("error"),
-}, (table) => [uniqueIndex("generations_condition_run_unique").on(table.conditionId, table.runIndex)]);
+}, (table) => [uniqueIndex("generations_condition_task_run_unique").on(table.conditionId, table.taskId, table.runIndex)]);
 
 export const judgments = sqliteTable("judgments", {
   id: text("id").primaryKey(),

@@ -14,7 +14,7 @@ const chromePath = process.env.WORDS_CHROME_PATH || join(process.env.HOME || "",
 if (!existsSync(chromePath)) throw new Error(`Chromium not found at ${chromePath}. Set WORDS_CHROME_PATH.`);
 
 const viewports = {
-  desktop: { width: 1440, height: 900 },
+  desktop: { width: 1920, height: 1080 },
   mobile: { width: 390, height: 844 },
 };
 const experiment = JSON.parse(readFileSync(exportPath, "utf8"));
@@ -39,12 +39,25 @@ async function buildRun(run, label) {
   rmSync(directory, { recursive: true, force: true });
   mkdirSync(directory, { recursive: true });
   let entryComponent = null;
+  const isPlainHtml = manifest.some((item) => item.originalPath.toLowerCase() === "index.html")
+    && manifest.some((item) => item.originalPath.toLowerCase() === "styles.css");
   for (const item of manifest) {
     const target = join(directory, item.originalPath);
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, files[item.ordinalPath] ?? "");
     if (!entryComponent && /(?:^|\/)App\.tsx?$/.test(item.originalPath)) entryComponent = item.originalPath;
     else if (!entryComponent && /\.tsx?$/.test(item.originalPath)) entryComponent = item.originalPath;
+  }
+  if (isPlainHtml) {
+    const sourcePage = join(directory, "index.html");
+    const sourceHtml = readFileSync(sourcePage, "utf8");
+    const probeScript = `<script>setTimeout(()=>{document.body.dataset.horizontalOverflow=String(document.documentElement.scrollWidth>window.innerWidth+1)},1000)</script>`;
+    const renderHtml = /<\/body>/i.test(sourceHtml)
+      ? sourceHtml.replace(/<\/body>/i, `${probeScript}</body>`)
+      : `${sourceHtml}${probeScript}`;
+    const page = join(directory, "render.html");
+    writeFileSync(page, renderHtml);
+    return { directory, page, format: "plain_html_css" };
   }
   if (!entryComponent) return { error: "no component file" };
   const importPath = `./${entryComponent.replace(/\.tsx?$/, "")}`;
@@ -57,7 +70,7 @@ async function buildRun(run, label) {
   const stylesheets = manifest.filter((item) => item.originalPath.endsWith(".css")).map((item) => `<link rel="stylesheet" href="${item.originalPath}">`).join("");
   const page = join(directory, "index.html");
   writeFileSync(page, `<!doctype html><html><head><meta charset="utf-8">${stylesheets}<link rel="stylesheet" href="entry.css"><style>html,body{margin:0}</style></head><body><div id="root"></div><script src="entry.js"></script><script>setTimeout(()=>{document.body.dataset.horizontalOverflow=String(document.documentElement.scrollWidth>window.innerWidth+1)},1000)</script></body></html>`);
-  return { directory, page };
+  return { directory, page, format: "react" };
 }
 
 function renderViewport(page, label, viewportName, viewport) {
@@ -65,9 +78,11 @@ function renderViewport(page, label, viewportName, viewport) {
   try {
     const dom = chrome([`--window-size=${viewport.width},${viewport.height}`, "--virtual-time-budget=2500", "--dump-dom", `file://${page}`]);
     const rootMatch = dom.match(/<div id="root">([\s\S]*?)<\/div>/i);
-    if (!rootMatch || !rootMatch[1].trim()) return { viewport: viewportName, passed: false, gates: { rendered: false, noHorizontalOverflow: false, requiredTextPresent: false }, error: "component rendered nothing" };
+    const bodyMatch = dom.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    const renderedMarkup = rootMatch?.[1] || bodyMatch?.[1] || "";
+    if (!renderedMarkup.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").trim()) return { viewport: viewportName, passed: false, gates: { rendered: false, noHorizontalOverflow: false, requiredTextPresent: false }, error: "page rendered nothing" };
     if (!existsSync(png)) chrome([`--window-size=${viewport.width},${viewport.height}`, "--virtual-time-budget=2500", `--screenshot=${png}`, `file://${page}`]);
-    const bodyHtml = dom.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || rootMatch[1];
+    const bodyHtml = bodyMatch?.[1] || renderedMarkup;
     const visibleText = bodyHtml.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/gi, " ").replace(/\s+/g, " ").trim();
     const requiredTextPresent = visibleText.length > 0;
     // Chromium's dump does not expose layout widths, so overflow is checked in a second DOM pass.
@@ -87,7 +102,7 @@ mkdirSync(workDir, { recursive: true });
 const results = [];
 for (const run of experiment.runs.filter((candidate) => candidate.status === "succeeded" && candidate.artifact_bundle)) {
   const condition = experiment.conditions.find((candidate) => candidate.id === run.condition_id);
-  const label = `${condition?.normalized_word || "unknown"}-${run.run_index}-${run.id.slice(0, 8)}`;
+  const label = `${run.task_key || "default"}-${condition?.normalized_word || "unknown"}-${run.run_index}-${run.id.slice(0, 8)}`;
   const built = await buildRun(run, label);
   if (built.error) {
     results.push({ generationId: run.id, label, passed: false, error: built.error, screenshots: [] });

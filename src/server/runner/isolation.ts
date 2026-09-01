@@ -153,7 +153,12 @@ export async function runIsolatedCall(
         // The process group already exited.
       }
     };
-    const timeout = setTimeout(() => terminate("SIGTERM"), 10 * 60_000);
+    // Luna at max reasoning can take longer for multi-file UI artifacts.
+    let forcedKill: NodeJS.Timeout | undefined;
+    const timeout = setTimeout(() => {
+      terminate("SIGTERM");
+      forcedKill = setTimeout(() => terminate("SIGKILL"), 5_000);
+    }, 30 * 60_000);
     const abort = () => terminate("SIGTERM");
     signal?.addEventListener("abort", abort, { once: true });
     const exitCode = await new Promise<number | null>((resolve, reject) => {
@@ -161,6 +166,7 @@ export async function runIsolatedCall(
       child.once("exit", resolve);
     }).finally(() => {
       clearTimeout(timeout);
+      if (forcedKill) clearTimeout(forcedKill);
       signal?.removeEventListener("abort", abort);
     });
     if (signal?.aborted) throw new Error("Model call canceled");

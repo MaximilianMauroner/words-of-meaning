@@ -6,6 +6,7 @@ import Link from "next/link";
 type ResultData = {
   experiment: Record<string, string | number | boolean | null>;
   conditions: Array<Record<string, string | number | boolean | null>>;
+  tasks: Array<Record<string, string | number | boolean | null>>;
   runs: Array<Record<string, string | number | boolean | null>>;
   jobs: Array<{ kind: string; state: string; count: number }>;
   attempts: Array<Record<string, string | number | null>>;
@@ -87,6 +88,7 @@ export function ExperimentResults({ id }: { id: string }) {
           <p className="eyebrow">Experiment</p>
           <h1>{String(data.experiment.name)}</h1>
           <p>{String(data.experiment.neutral_task)}</p>
+          {data.tasks?.length > 0 && <p className="task-summary">{data.tasks.length} design briefs · {data.tasks.map((task) => String(task.name)).join(" · ")}</p>}
         </div>
         <div className="header-actions">
           <span className={`status ${status}`}>{status.replaceAll("_", " ")}</span>
@@ -115,7 +117,7 @@ export function ExperimentResults({ id }: { id: string }) {
         <Metric label="Chance p-value" value={formatNumber(data.metrics.significance.oneSidedPValue)} note={data.metrics.significance.significant ? "Above chance at α=0.05" : "Not above chance at α=0.05"} />
         <Metric label="95% accuracy interval" value={formatInterval(data.metrics.significance.accuracyWilson95)} note="Wilson score interval" />
         <Metric label="Log loss" value={formatNumber(data.metrics.logLoss)} note="Lower is better" />
-        <Metric label="Control recall" value={formatPercent(data.metrics.controlRecall)} note={`${data.metrics.excludedCount} excluded`} />
+        <Metric label="Control in exact metric" value="Excluded" note={`${data.metrics.excludedCount} failed or leaking adjective runs`} />
         <Metric label="Task bootstrap 95%" value={formatInterval(data.metrics.taskAware.taskBootstrapAccuracy95)} note={`${data.metrics.taskAware.taskCount} task blocks`} />
         <Metric label="Blocked permutation p" value={formatNumber(data.metrics.taskAware.blockedPermutationPValue)} note="Labels permuted within task" />
       </section>
@@ -174,12 +176,13 @@ function Progress({ label, value, total }: { label: string; value: number; total
 
 function RunDetail({ run, attempts }: { run: Record<string, string | number | boolean | null>; attempts: Array<Record<string, string | number | null>> }) {
   const label = run.is_control ? "control" : String(run.word);
+  const task = run.task_name ? String(run.task_name) : "Default task";
   const probabilities = run.probabilities_json ? JSON.parse(String(run.probabilities_json)) as Record<string, number> : null;
   const profiles = run.profile_scores_json ? JSON.parse(String(run.profile_scores_json)) as Record<string, number | null> : null;
   return (
     <details>
       <summary>
-        <span><strong>{label}</strong> · run {String(run.run_index)}</span>
+        <span><strong>{task}</strong> · {label} · run {String(run.run_index)}</span>
         <span>{run.word_leak ? "word leak · " : ""}{run.prediction ? `predicted ${run.prediction}` : String(run.status)}</span>
       </summary>
       <div className="run-detail-grid">

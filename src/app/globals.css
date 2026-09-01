@@ -50,7 +50,15 @@ label small, .fine-print { color: var(--muted); font-weight: 450; }
 .dimension-picker label { display: flex; grid-template-columns: none; gap: 6px; align-items: center; margin: 0; font-weight: 550; }
 .dimension-picker input { width: auto; }
 .dimension-picker small { color: var(--muted); }
-.call-preview { display: grid; grid-template-columns: repeat(3, 1fr); margin: 8px 0 12px; padding: 15px; background: #eeece5; border-radius: 10px; }
+.task-picker { margin: 0 0 18px; padding: 14px; border: 1px solid var(--line); border-radius: 9px; }
+.task-picker legend { padding: 0 5px; font-size: 12px; font-weight: 750; }
+.task-picker > div { display: grid; gap: 8px; }
+.task-picker label { display: flex; grid-template-columns: none; gap: 8px; align-items: flex-start; margin: 0; padding: 9px; border: 1px solid transparent; border-radius: 7px; font-weight: 550; }
+.task-picker label:has(input:checked) { border-color: #bed0c2; background: var(--soft); }
+.task-picker input { width: auto; margin-top: 3px; }
+.task-picker span { display: grid; gap: 2px; }
+.task-picker span small, .task-picker > small { color: var(--muted); font-weight: 450; }
+.call-preview { display: grid; grid-template-columns: repeat(4, 1fr); margin: 8px 0 12px; padding: 15px; background: #eeece5; border-radius: 10px; }
 .call-preview span { display: grid; text-align: center; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
 .call-preview strong { color: var(--ink); font: 600 25px/1.25 Georgia, serif; }
 .primary-button, .secondary-button, .danger-button { display: inline-flex; justify-content: center; align-items: center; padding: 11px 16px; border: 0; border-radius: 8px; cursor: pointer; font-weight: 750; text-decoration: none; }
@@ -71,6 +79,7 @@ label small, .fine-print { color: var(--muted); font-weight: 450; }
 .result-header { display: flex; gap: 30px; justify-content: space-between; padding: 34px; margin-bottom: 18px; }
 .result-header h1 { font-size: clamp(36px, 5vw, 58px); }
 .result-header p:last-child { max-width: 700px; margin-bottom: 0; color: var(--muted); }
+.result-header .task-summary { max-width: 900px; font-size: 13px; }
 .header-actions { display: flex; flex-wrap: wrap; align-content: start; justify-content: end; gap: 8px; }
 .progress-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .progress-item > div:first-child { display: flex; justify-content: space-between; margin-bottom: 7px; }

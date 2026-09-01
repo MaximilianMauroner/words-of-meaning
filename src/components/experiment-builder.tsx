@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { defaultDimensions } from "@/shared/domain";
+import { defaultDimensions, FIXED_BENCHMARK_MODEL, FIXED_BENCHMARK_REASONING, recommendedDesignTasks } from "@/shared/domain";
 
 type Preflight = {
   ok: boolean;
@@ -23,28 +23,31 @@ type ExperimentSummary = {
   profiles_succeeded: number;
 };
 
-const initialPrompt = "Build a React settings page for a note-taking application. Make it {{word}}.";
+const initialPrompt = recommendedDesignTasks[0].prompt;
 
 export function ExperimentBuilder() {
   const router = useRouter();
   const [preflight, setPreflight] = useState<Preflight | null>(null);
   const [experiments, setExperiments] = useState<ExperimentSummary[]>([]);
-  const [name, setName] = useState("Settings page adjectives");
-  const [basePrompt, setBasePrompt] = useState(initialPrompt);
+  const [name, setName] = useState("Static design adjectives");
+  const basePrompt = initialPrompt;
   const [wordsText, setWordsText] = useState("lovely\nbeautiful\nelegant\npolished\nrefined");
   const [runs, setRuns] = useState(5);
-  const [generatorModel, setGeneratorModel] = useState("gpt-5.6-terra");
-  const [judgeModel, setJudgeModel] = useState("gpt-5.6-terra");
-  const [generatorReasoning, setGeneratorReasoning] = useState("medium");
-  const [judgeReasoning, setJudgeReasoning] = useState("medium");
+  const generatorModel = FIXED_BENCHMARK_MODEL;
+  const judgeModel = FIXED_BENCHMARK_MODEL;
+  const generatorReasoning = FIXED_BENCHMARK_REASONING;
+  const judgeReasoning = FIXED_BENCHMARK_REASONING;
   const [maxConcurrency, setMaxConcurrency] = useState(1);
   const [selectedDimensions, setSelectedDimensions] = useState<string[]>(defaultDimensions.map((dimension) => dimension.key));
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>(recommendedDesignTasks.map((task) => task.id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const words = useMemo(() => wordsText.split("\n").map((word) => word.trim()).filter(Boolean), [wordsText]);
+  const selectedTasks = useMemo(() => recommendedDesignTasks.filter((task) => selectedTaskIds.includes(task.id)), [selectedTaskIds]);
   const conditions = words.length + 1;
-  const calls = conditions * runs * 3;
+  const outputs = conditions * runs * selectedTasks.length;
+  const calls = outputs * 3;
 
   async function refresh() {
     const [preflightResponse, experimentResponse] = await Promise.all([
@@ -75,7 +78,7 @@ export function ExperimentBuilder() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          basePrompt,
+          basePrompt: selectedTasks[0]?.prompt || basePrompt,
           words,
           runsPerCondition: runs,
           generatorModel,
@@ -84,6 +87,7 @@ export function ExperimentBuilder() {
           judgeReasoning,
           maxConcurrency,
           dimensions: defaultDimensions.filter((dimension) => selectedDimensions.includes(dimension.key)),
+          tasks: selectedTasks,
         }),
       });
       const data = await response.json();
@@ -139,11 +143,22 @@ export function ExperimentBuilder() {
             Experiment name
             <input value={name} onChange={(event) => setName(event.target.value)} required />
           </label>
-          <label>
-            Base prompt
-            <textarea rows={4} value={basePrompt} onChange={(event) => setBasePrompt(event.target.value)} required />
-            <small>Include exactly one <code>{"{{word}}"}</code> placeholder.</small>
-          </label>
+          <fieldset className="task-picker">
+            <legend>Static HTML/CSS designs</legend>
+            <div>{recommendedDesignTasks.map((task) => (
+              <label key={task.id}>
+                <input
+                  type="checkbox"
+                  checked={selectedTaskIds.includes(task.id)}
+                  onChange={(event) => setSelectedTaskIds((current) => event.target.checked
+                    ? [...current, task.id]
+                    : current.filter((id) => id !== task.id))}
+                />
+                <span><strong>{task.name}</strong><small>{task.prompt}</small></span>
+              </label>
+            ))}</div>
+            <small>Each selected design is a separate task block. Every output must contain only <code>index.html</code> and <code>styles.css</code>; React and JavaScript are not allowed.</small>
+          </fieldset>
           <label>
             Candidate words, one per line
             <textarea className="word-list" rows={7} value={wordsText} onChange={(event) => setWordsText(event.target.value)} required />
@@ -156,23 +171,23 @@ export function ExperimentBuilder() {
             </label>
             <label>
               Generator model
-              <input value={generatorModel} onChange={(event) => setGeneratorModel(event.target.value)} />
+              <input value={generatorModel} readOnly aria-readonly="true" />
+              <small>Fixed for every generation.</small>
             </label>
             <label>
               Generator reasoning
-              <select value={generatorReasoning} onChange={(event) => setGeneratorReasoning(event.target.value)}>
-                {reasoningOptions.map((option) => <option key={option}>{option}</option>)}
-              </select>
+              <input value={generatorReasoning} readOnly aria-readonly="true" />
+              <small>Fixed at maximum reasoning.</small>
             </label>
             <label>
               Judge model
-              <input value={judgeModel} onChange={(event) => setJudgeModel(event.target.value)} />
+              <input value={judgeModel} readOnly aria-readonly="true" />
+              <small>Fixed for every judge call.</small>
             </label>
             <label>
               Judge reasoning
-              <select value={judgeReasoning} onChange={(event) => setJudgeReasoning(event.target.value)}>
-                {reasoningOptions.map((option) => <option key={option}>{option}</option>)}
-              </select>
+              <input value={judgeReasoning} readOnly aria-readonly="true" />
+              <small>Fixed at maximum reasoning.</small>
             </label>
             <label>
               Maximum concurrency
@@ -181,13 +196,14 @@ export function ExperimentBuilder() {
           </div>
 
           <div className="call-preview">
-            <span><strong>{conditions}</strong> conditions</span>
-            <span><strong>{conditions * runs}</strong> outputs</span>
+            <span><strong>{selectedTasks.length}</strong> designs</span>
+            <span><strong>{conditions}</strong> conditions/design</span>
+            <span><strong>{outputs}</strong> outputs</span>
             <span><strong>{calls}</strong> Codex calls</span>
           </div>
           <p className="fine-print">One output needs one generation, one blind classification, and one profile evaluation. Account limits still apply.</p>
           {error && <p className="error-box">{error}</p>}
-          <button className="primary-button" disabled={busy || !preflight?.ok || selectedDimensions.length === 0}>{busy ? "Starting…" : "Start experiment"}</button>
+          <button className="primary-button" disabled={busy || !preflight?.ok || selectedDimensions.length === 0 || selectedTasks.length === 0}>{busy ? "Starting…" : "Start experiment"}</button>
         </form>
 
         <section className="panel experiment-list">
@@ -208,8 +224,6 @@ export function ExperimentBuilder() {
     </>
   );
 }
-
-const reasoningOptions = ["low", "medium", "high", "xhigh", "max", "ultra"];
 
 function humanStatus(status: string) {
   return status.replaceAll("_", " ");

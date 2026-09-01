@@ -5,7 +5,7 @@ import { renderPrompt, validateClassification, validateProfile, type ReasoningEf
 import type { WorkerEnvelope } from "@/shared/worker";
 import { forbiddenJudgeFields } from "@/shared/worker";
 import { sqlite } from "@/server/db/client";
-import { containsWordLeak } from "@/server/artifacts/canonicalize";
+import { containsWordLeak, validatePlainHtmlCssArtifact } from "@/server/artifacts/canonicalize";
 import { runIsolatedCall } from "@/server/runner/isolation";
 
 type JobRow = {
@@ -20,7 +20,8 @@ type JobRow = {
 type GenerationContext = {
   generation_id: string;
   word: string | null;
-  base_prompt: string;
+  task_prompt: string;
+  task_output_format: "plain_html_css" | "markdown";
   generator_model: string;
   generator_reasoning: ReasoningEffort;
 };
@@ -66,16 +67,22 @@ function claimJob(): JobRow | null {
 
 function generationEnvelope(job: JobRow): { envelope: WorkerEnvelope; context: GenerationContext } {
   const context = sqlite.prepare(`
-    SELECT g.id AS generation_id, c.word, e.base_prompt, e.generator_model, e.generator_reasoning
+    SELECT g.id AS generation_id, c.word,
+      COALESCE(t.prompt, e.base_prompt) AS task_prompt,
+      COALESCE(t.output_format, 'markdown') AS task_output_format,
+      e.generator_model, e.generator_reasoning
     FROM generations g JOIN conditions c ON c.id = g.condition_id
-    JOIN experiments e ON e.id = g.experiment_id WHERE g.id = ?
+    JOIN experiments e ON e.id = g.experiment_id
+    LEFT JOIN tasks t ON t.id = g.task_id
+    WHERE g.id = ?
   `).get(job.target_id) as GenerationContext | undefined;
   if (!context) throw new Error("Generation target is missing");
   return {
     envelope: {
       kind: "generate",
       settings: { model: context.generator_model, reasoningEffort: context.generator_reasoning },
-      prompt: renderPrompt(context.base_prompt, context.word),
+      prompt: renderPrompt(context.task_prompt, context.word),
+      artifactFormat: context.task_output_format,
     },
     context,
   };
@@ -83,10 +90,13 @@ function generationEnvelope(job: JobRow): { envelope: WorkerEnvelope; context: G
 
 function judgeEnvelope(job: JobRow): { envelope: WorkerEnvelope; context: JudgeContext } {
   const context = sqlite.prepare(`
-    SELECT j.id AS judgment_id, e.neutral_task, g.artifact_bundle, j.candidate_order_json,
+    SELECT j.id AS judgment_id, COALESCE(t.neutral_task, e.neutral_task) AS neutral_task,
+      g.artifact_bundle, j.candidate_order_json,
       e.dimensions_json, e.judge_model, e.judge_reasoning
     FROM judgments j JOIN generations g ON g.id = j.generation_id
-    JOIN experiments e ON e.id = g.experiment_id WHERE j.id = ?
+    JOIN experiments e ON e.id = g.experiment_id
+    LEFT JOIN tasks t ON t.id = g.task_id
+    WHERE j.id = ?
   `).get(job.target_id) as JudgeContext | undefined;
   if (!context?.artifact_bundle) throw new Error("Judge target has no source bundle");
   const settings = { model: context.judge_model, reasoningEffort: context.judge_reasoning };
@@ -159,6 +169,7 @@ async function executeJob(job: JobRow) {
       if (job.kind === "generate") {
         if (!call.artifact) throw new Error("Generation returned no artifact");
         const context = built.context as GenerationContext;
+        if (context.task_output_format === "plain_html_css") validatePlainHtmlCssArtifact(call.artifact);
         const leak = containsWordLeak(call.artifact.bundle, context.word);
         sqlite.prepare(`UPDATE generations SET status = 'succeeded', artifact_bundle = ?, artifact_manifest_json = ?,
           artifact_hash = ?, artifact_bytes = ?, word_leak = ?, error = NULL WHERE id = ?`).run(

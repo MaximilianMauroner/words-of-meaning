@@ -14,10 +14,11 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     return { ...copy, isolation_id: isolationId };
   });
   const body = JSON.stringify({
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     experiment: result.experiment,
     conditions: result.conditions,
+    tasks: result.tasks,
     runs: result.runs,
     attempts: safeAttempts,
     metrics: computeMetrics(result.runs as MetricRun[], dimensions.map((dimension) => dimension.key)),

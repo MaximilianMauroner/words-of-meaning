@@ -99,8 +99,10 @@ function blockedPermutationPValue(rows: { task: string; actual: string; predicte
 }
 
 export function computeMetrics(runs: MetricRun[], dimensionKeys: string[]) {
-  const labels = [...new Set(runs.map((run) => run.is_control ? CONTROL_LABEL : run.word!))];
-  const eligible = runs.filter((run) => run.status === "succeeded" && !run.word_leak && run.prediction && run.probabilities_json);
+  const labels = [...new Set(runs.filter((run) => !run.is_control).map((run) => run.word!))];
+  const conditionLabels = [CONTROL_LABEL, ...labels];
+  const judgmentEligible = runs.filter((run) => run.status === "succeeded" && !run.word_leak && run.prediction && run.probabilities_json);
+  const eligible = judgmentEligible.filter((run) => !run.is_control);
   const confusion = Object.fromEntries(labels.map((actual) => [
     actual,
     Object.fromEntries(labels.map((predicted) => [predicted, 0])),
@@ -108,10 +110,10 @@ export function computeMetrics(runs: MetricRun[], dimensionKeys: string[]) {
   let correct = 0;
   let logLossTotal = 0;
   const recalls = Object.fromEntries(labels.map((label) => [label, { correct: 0, total: 0, rate: null as number | null } ]));
-  const modifierByLabel = Object.fromEntries(labels.map((label) => [label, [] as number[]]));
+  const modifierByLabel = Object.fromEntries(conditionLabels.map((label) => [label, [] as number[]]));
 
   for (const run of eligible) {
-    const actual = run.is_control ? CONTROL_LABEL : run.word!;
+    const actual = run.word!;
     const predicted = run.prediction!;
     if (confusion[actual]?.[predicted] !== undefined) confusion[actual][predicted] += 1;
     recalls[actual].total += 1;
@@ -121,6 +123,9 @@ export function computeMetrics(runs: MetricRun[], dimensionKeys: string[]) {
     }
     const probabilities = JSON.parse(run.probabilities_json!) as Record<string, number>;
     logLossTotal += -Math.log(Math.max(1e-12, probabilities[actual] ?? 0));
+  }
+  for (const run of judgmentEligible) {
+    const actual = run.is_control ? CONTROL_LABEL : run.word!;
     if (run.modifier_present_probability !== null) modifierByLabel[actual].push(run.modifier_present_probability / 1_000_000);
   }
   for (const label of labels) {
@@ -137,7 +142,7 @@ export function computeMetrics(runs: MetricRun[], dimensionKeys: string[]) {
   }
   pairConfusions.sort((a, b) => b.count - a.count);
 
-  const profileRaw: Record<string, Record<string, number[]>> = Object.fromEntries(labels.map((label) => [
+  const profileRaw: Record<string, Record<string, number[]>> = Object.fromEntries(conditionLabels.map((label) => [
     label,
     Object.fromEntries(dimensionKeys.map((key) => [key, []])),
   ]));
@@ -147,7 +152,7 @@ export function computeMetrics(runs: MetricRun[], dimensionKeys: string[]) {
     for (const key of dimensionKeys) if (scores[key] !== null && scores[key] !== undefined) profileRaw[label][key].push(scores[key]!);
   }
   const controlMeans = Object.fromEntries(dimensionKeys.map((key) => [key, mean(profileRaw[CONTROL_LABEL]?.[key] ?? [])]));
-  const profiles = Object.fromEntries(labels.map((label) => [label, Object.fromEntries(dimensionKeys.map((key) => {
+  const profiles = Object.fromEntries(conditionLabels.map((label) => [label, Object.fromEntries(dimensionKeys.map((key) => {
     const values = profileRaw[label][key];
     const rawMean = mean(values);
     const controlMean = controlMeans[key];
@@ -165,24 +170,24 @@ export function computeMetrics(runs: MetricRun[], dimensionKeys: string[]) {
 
   const chance = labels.length ? 1 / labels.length : null;
   const chancePValue = chance === null ? null : binomialUpperTail(correct, eligible.length, chance);
-  const exactModifierRows = eligible.filter((run) => !run.is_control);
+  const exactModifierRows = eligible;
   const exactModifierCorrect = exactModifierRows.filter((run) => run.prediction === run.word).length;
-  const detectionRows = eligible.filter((run) => run.modifier_present_probability !== null);
+  const detectionRows = judgmentEligible.filter((run) => run.modifier_present_probability !== null);
   const detectionCorrect = detectionRows.filter((run) => {
     const predictedModifier = run.modifier_present_probability! / 1_000_000 >= 0.5;
     return predictedModifier === !Boolean(run.is_control);
   }).length;
   const blockedRows = eligible.map((run) => ({
     task: run.task_id || "legacy-task",
-    actual: run.is_control ? CONTROL_LABEL : run.word!,
+    actual: run.word!,
     predicted: run.prediction!,
-    correct: (run.is_control ? CONTROL_LABEL : run.word!) === run.prediction,
+    correct: run.word === run.prediction,
   }));
   return {
     labels,
     chance,
     eligibleCount: eligible.length,
-    excludedCount: runs.length - eligible.length,
+    excludedCount: runs.filter((run) => !run.is_control).length - eligible.length,
     accuracy: eligible.length ? correct / eligible.length : null,
     correctCount: correct,
     significance: {
@@ -205,7 +210,7 @@ export function computeMetrics(runs: MetricRun[], dimensionKeys: string[]) {
       exactModifier: {
         eligibleCount: exactModifierRows.length,
         correctCount: exactModifierCorrect,
-        chance: labels.length > 1 ? 1 / (labels.length - 1) : null,
+        chance,
         accuracy: exactModifierRows.length ? exactModifierCorrect / exactModifierRows.length : null,
         wilson95: wilsonInterval(exactModifierCorrect, exactModifierRows.length),
       },
@@ -216,11 +221,11 @@ export function computeMetrics(runs: MetricRun[], dimensionKeys: string[]) {
       blockedPermutationPValue: blockedPermutationPValue(blockedRows, labels),
       resamplingUnit: "task_template",
     },
-    controlRecall: recalls[CONTROL_LABEL]?.rate ?? null,
+    controlRecall: null,
     recalls,
     confusion,
     pairConfusions,
-    modifierPresentMean: Object.fromEntries(labels.map((label) => [label, mean(modifierByLabel[label])])),
+    modifierPresentMean: Object.fromEntries(conditionLabels.map((label) => [label, mean(modifierByLabel[label])])),
     profiles,
   };
 }

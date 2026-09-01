@@ -6,15 +6,17 @@ The benchmark measures observable behavior. It cannot establish that a model has
 
 ## What it runs
 
-For every word and the required no-word control, the app:
+For every selected design brief, word, and required no-word control, the app:
 
 1. Starts a fresh Codex process and thread to generate source files.
 2. Normalizes the generated files into a path-neutral source bundle.
-3. Starts a fresh blind judge to assign probabilities to every candidate word.
+3. Starts a fresh blind judge to estimate modifier presence and assign probabilities to every adjective candidate. The no-word control is excluded from exact adjective identification.
 4. Starts another fresh judge to score behavioral dimensions from 1 to 7.
 5. Computes identification accuracy, log loss, per-word recall, a confusion matrix, control detection, and control-relative behavioral profiles.
 
-Five words with five runs create 30 outputs and 90 Codex calls.
+Five words with five runs create 30 outputs and 90 Codex calls for one task. Selecting three static design briefs creates 90 outputs and 270 Codex calls. Each task block keeps its design prompt separate while reusing the same adjective conditions.
+
+The built-in UI briefs are notes settings, a calendar dashboard, and a recipe collection. UI generations are plain `index.html` and `styles.css` artifacts; React, JSX, TypeScript, JavaScript, and external dependencies are rejected. Additional task templates can be supplied through the API using the `tasks` field.
 
 ## Isolation contract
 
@@ -27,7 +29,7 @@ Each generation, classification, and profile evaluation gets:
 - a temporary `CODEX_HOME` containing only a mode `0600` copy of `auth.json`;
 - workspace-write sandboxing, disabled network access, no approvals, and no extra readable directories.
 
-The child receives one JSON envelope over standard input. Judge envelopes contain the adjective-free task, one canonical source bundle, and either the randomized candidate list or fixed scoring rubric. They do not contain condition IDs, the rendered generation prompt, run indexes, generator thread IDs, or the true label as a separate field.
+The child receives one JSON envelope over standard input. Judge envelopes contain the adjective-free task, one canonical source bundle, and either the randomized adjective list or fixed scoring rubric. The control is generated but never appears as an adjective candidate; it is measured through the separate modifier-presence estimate. Judge envelopes do not contain condition IDs, the rendered generation prompt, run indexes, generator thread IDs, or the true label as a separate field.
 
 The parent process owns SQLite and joins truth only when calculating results. Interrupted jobs resume with a new process, thread, and workspace. The app retains the interrupted attempt for inspection.
 
