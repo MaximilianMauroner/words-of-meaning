@@ -1,0 +1,9 @@
+/.agent/artifacts/
+/.data/
+/.next/
+/node_modules/
+/coverage/
+*.tsbuildinfo
+.env*
+!.env.example
+*.tar.gz

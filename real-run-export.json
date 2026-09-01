@@ -1,0 +1,438 @@
+{
+  "version": 1,
+  "exportedAt": "2026-08-31T20:43:47.270Z",
+  "experiment": {
+    "id": "6f175cf0-7bed-473d-b7c7-0ba1d611ece8",
+    "name": "Real Codex isolated smoke",
+    "base_prompt": "Build a small React settings panel for a note-taking application. Make it {{word}}. You must create App.tsx and styles.css in the current directory with no external dependencies.",
+    "neutral_task": "Build a small React settings panel for a note-taking application. Make it. You must create App.tsx and styles.css in the current directory with no external dependencies.",
+    "seed": "430f61e8744e37236eaa0c809385df0b61550b953b7d798d7c8943a4f2242a90",
+    "status": "completed",
+    "runs_per_condition": 1,
+    "generator_model": "gpt-5.6-terra",
+    "judge_model": "gpt-5.6-terra",
+    "generator_reasoning": "low",
+    "judge_reasoning": "low",
+    "max_concurrency": 1,
+    "dimensions_json": "[{\"key\":\"simplicity\",\"label\":\"Simplicity\",\"low\":\"many moving parts\",\"mid\":\"ordinary complexity\",\"high\":\"few clear moving parts\"},{\"key\":\"visual_ornamentation\",\"label\":\"Visual ornamentation\",\"low\":\"plain presentation\",\"mid\":\"moderate decoration\",\"high\":\"rich decorative treatment\"},{\"key\":\"ux_detail\",\"label\":\"UX detail\",\"low\":\"few interaction details\",\"mid\":\"expected interaction details\",\"high\":\"many considered interaction details\"}]",
+    "sdk_version": "0.151.0",
+    "cancel_requested": 0,
+    "created_at": 1788208560075,
+    "started_at": 1788208560075,
+    "completed_at": 1788208860879
+  },
+  "conditions": [
+    {
+      "id": "ba0e2849-8b9a-40e5-9b6b-a7c1cb439ecd",
+      "experiment_id": "6f175cf0-7bed-473d-b7c7-0ba1d611ece8",
+      "word": null,
+      "normalized_word": "control",
+      "is_control": 1,
+      "display_order": 0
+    },
+    {
+      "id": "3fcb7248-418d-4235-8b4f-634e5052a2ed",
+      "experiment_id": "6f175cf0-7bed-473d-b7c7-0ba1d611ece8",
+      "word": "elegant",
+      "normalized_word": "elegant",
+      "is_control": 0,
+      "display_order": 1
+    },
+    {
+      "id": "756f74c9-9aca-47c0-8be0-b2af4f94fd44",
+      "experiment_id": "6f175cf0-7bed-473d-b7c7-0ba1d611ece8",
+      "word": "polished",
+      "normalized_word": "polished",
+      "is_control": 0,
+      "display_order": 2
+    }
+  ],
+  "runs": [
+    {
+      "id": "e45cbf60-06cc-4dba-becd-e18078b6f855",
+      "experiment_id": "6f175cf0-7bed-473d-b7c7-0ba1d611ece8",
+      "condition_id": "ba0e2849-8b9a-40e5-9b6b-a7c1cb439ecd",
+      "run_index": 1,
+      "status": "succeeded",
+      "artifact_bundle": "=== file-001.tsx ===\nimport { useState } from \"react\";\nimport \"./styles.css\";\n\ntype ToggleProps = { enabled: boolean; onChange: () => void; label: string };\n\nfunction Toggle({ enabled, onChange, label }: ToggleProps) {\n  return (\n    <button\n      type=\"button\"\n      className={`toggle ${enabled ? \"is-on\" : \"\"}`}\n      onClick={onChange}\n      aria-pressed={enabled}\n      aria-label={label}\n    >\n      <span />\n    </button>\n  );\n}\n\nconst Chevron = () => <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m9 18 6-6-6-6\" /></svg>;\nconst Check = () => <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 12 4 4L19 6\" /></svg>;\nconst Close = () => <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 6l12 12M18 6 6 18\" /></svg>;\n\nexport default function App() {\n  const [compact, setCompact] = useState(false);\n  const [spellcheck, setSpellcheck] = useState(true);\n  const [theme, setTheme] = useState(\"System\");\n  const [saved, setSaved] = useState(false);\n\n  return (\n    <main className=\"page-shell\">\n      <section className=\"settings-panel\" aria-labelledby=\"settings-title\">\n        <header className=\"panel-header\">\n          <div>\n            <p className=\"eyebrow\">Workspace</p>\n            <h1 id=\"settings-title\">Settings</h1>\n            <p className=\"subtitle\">Shape how your notes feel and behave.</p>\n          </div>\n          <button className=\"icon-button\" aria-label=\"Close settings\"><Close /></button>\n        </header>\n\n        <div className=\"content\">\n          <nav className=\"side-nav\" aria-label=\"Settings sections\">\n            <button className=\"nav-item active\">General</button>\n            <button className=\"nav-item\">Editor</button>\n            <button className=\"nav-item\">Appearance</button>\n            <button className=\"nav-item\">Shortcuts</button>\n          </nav>\n\n          <div className=\"settings-content\">\n            <div className=\"section-heading\">\n              <h2>General</h2>\n              <p>Personalize the essentials of your workspace.</p>\n            </div>\n\n            <div className=\"setting-group\">\n              <div className=\"setting-row profile-row\">\n                <div className=\"avatar\">AR</div>\n                <div className=\"setting-copy\">\n                  <h3>Alex Rivera</h3>\n                  <p>alex@paperlane.co</p>\n                </div>\n                <button className=\"text-button\">Manage account <Chevron /></button>\n              </div>\n            </div>\n\n            <div className=\"setting-group\">\n              <p className=\"group-label\">Preferences</p>\n              <div className=\"setting-row\">\n                <div className=\"setting-copy\">\n                  <h3>Theme</h3>\n                  <p>Choose how Paperlane looks on this device.</p>\n                </div>\n                <div className=\"segmented\" aria-label=\"Theme preference\">\n                  {[\"Light\", \"System\", \"Dark\"].map((option) => (\n                    <button key={option} className={theme === option ? \"selected\" : \"\"} onClick={() => setTheme(option)}>{option}</button>\n                  ))}\n                </div>\n              </div>\n              <div className=\"setting-row\">\n                <div className=\"setting-copy\">\n                  <h3>Compact note list</h3>\n                  <p>Show more notes in the sidebar.</p>\n                </div>\n                <Toggle enabled={compact} onChange={() => setCompact(!compact)} label=\"Toggle compact note list\" />\n              </div>\n              <div className=\"setting-row\">\n                <div className=\"setting-copy\">\n                  <h3>Spell check</h3>\n                  <p>Highlight spelling mistakes while you write.</p>\n                </div>\n                <Toggle enabled={spellcheck} onChange={() => setSpellcheck(!spellcheck)} label=\"Toggle spell check\" />\n              </div>\n            </div>\n\n            <div className=\"setting-group danger-group\">\n              <p className=\"group-label\">Danger zone</p>\n              <div className=\"setting-row\">\n                <div className=\"setting-copy\">\n                  <h3>Export your notes</h3>\n                  <p>Download a copy of everything in your workspace.</p>\n                </div>\n                <button className=\"outline-button\">Export data</button>\n              </div>\n            </div>\n          </div>\n        </div>\n\n        <footer className=\"panel-footer\">\n          <p>{saved ? \"Changes saved\" : \"Changes are saved automatically\"}</p>\n          <button className=\"save-button\" onClick={() => setSaved(true)}>{saved && <Check />} Save changes</button>\n        </footer>\n      </section>\n    </main>\n  );\n}\n\n=== file-002.css ===\n:root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; color: #273036; background: #f2f0eb; }\n* { box-sizing: border-box; }\nbody { margin: 0; min-width: 320px; }\nbutton { font: inherit; cursor: pointer; }\n.page-shell { min-height: 100vh; display: grid; place-items: center; padding: 48px 24px; background: radial-gradient(circle at 12% 12%, #fbf7ed 0 8%, transparent 31%), linear-gradient(135deg, #e6e1d9, #f7f4ee); }\n.settings-panel { width: min(920px, 100%); overflow: hidden; border: 1px solid #dedbd3; border-radius: 18px; background: #fffdfa; box-shadow: 0 25px 60px #554f4330; }\n.panel-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 34px 38px 28px; border-bottom: 1px solid #ebe8e1; }\n.eyebrow, .group-label { margin: 0 0 7px; color: #a16d3f; font-size: 11px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }\nh1, h2, h3, p { margin-top: 0; }\nh1 { margin-bottom: 6px; font-family: Georgia, \"Times New Roman\", serif; font-size: 32px; font-weight: 600; letter-spacing: -.04em; }\n.subtitle, .section-heading p, .setting-copy p, .panel-footer p { margin-bottom: 0; color: #778078; font-size: 14px; }\n.icon-button { display: grid; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 9px; color: #69716a; background: transparent; }\n.icon-button:hover { background: #f1eee7; color: #28312d; }\nsvg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }\n.content { display: grid; grid-template-columns: 186px 1fr; min-height: 500px; }\n.side-nav { display: flex; flex-direction: column; gap: 3px; padding: 27px 18px; border-right: 1px solid #ebe8e1; background: #fcfaf6; }\n.nav-item { padding: 10px 12px; border: 0; border-radius: 8px; color: #727970; text-align: left; background: transparent; font-size: 14px; font-weight: 500; }\n.nav-item:hover { color: #303934; background: #f2efe8; }.nav-item.active { color: #714829; background: #f2e7da; font-weight: 700; }\n.settings-content { padding: 30px 38px; }.section-heading { margin-bottom: 27px; }.section-heading h2 { margin-bottom: 5px; font-size: 19px; letter-spacing: -.025em; }\n.setting-group { border-top: 1px solid #eae7e0; }.profile-row { min-height: 88px; }.setting-row { display: flex; align-items: center; gap: 22px; min-height: 82px; padding: 16px 0; border-bottom: 1px solid #eae7e0; }.setting-copy { flex: 1; }.setting-copy h3 { margin-bottom: 5px; font-size: 14px; font-weight: 700; }.setting-copy p { font-size: 13px; }\n.avatar { display: grid; flex: 0 0 auto; width: 42px; height: 42px; place-items: center; border-radius: 50%; color: #fffaf2; background: #789187; font-size: 13px; font-weight: 700; }.text-button { display: flex; align-items: center; gap: 4px; border: 0; color: #8a5a35; background: transparent; font-size: 13px; font-weight: 700; }.text-button svg { width: 14px; }\n.group-label { padding-top: 23px; }.segmented { display: flex; padding: 3px; border: 1px solid #dfddd6; border-radius: 9px; background: #f7f5f0; }.segmented button { padding: 6px 10px; border: 0; border-radius: 6px; color: #70776f; background: transparent; font-size: 12px; }.segmented button.selected { color: #344039; background: #fffdfa; box-shadow: 0 1px 3px #504c4020; font-weight: 700; }\n.toggle { width: 40px; height: 23px; padding: 3px; border: 0; border-radius: 99px; background: #d5d6d0; transition: background .18s; }.toggle span { display: block; width: 17px; height: 17px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px #0002; transition: transform .18s; }.toggle.is-on { background: #849e8e; }.toggle.is-on span { transform: translateX(17px); }\n.danger-group { margin-top: 2px; }.outline-button { padding: 8px 12px; border: 1px solid #d9d4cc; border-radius: 8px; color: #554e48; background: #fffdfa; font-size: 13px; font-weight: 600; }.outline-button:hover { border-color: #b8a99a; background: #faf6f0; }\n.panel-footer { display: flex; align-items: center; justify-content: space-between; padding: 18px 38px; border-top: 1px solid #e9e6df; background: #fcfaf6; }.panel-footer p { font-size: 12px; }.save-button { display: flex; align-items: center; gap: 6px; padding: 9px 14px; border: 0; border-radius: 8px; color: #fff; background: #3f6353; font-size: 13px; font-weight: 700; box-shadow: 0 2px 4px #25453530; }.save-button:hover { background: #335143; }.save-button svg { width: 15px; }\n@media (max-width: 680px) { .page-shell { padding: 0; }.settings-panel { border-radius: 0; }.panel-header, .settings-content, .panel-footer { padding-left: 22px; padding-right: 22px; }.content { grid-template-columns: 1fr; }.side-nav { flex-direction: row; overflow: auto; padding: 12px 18px; border-right: 0; border-bottom: 1px solid #ebe8e1; }.nav-item { white-space: nowrap; }.setting-row { gap: 12px; }.profile-row .text-button { font-size: 0; }.profile-row .text-button svg { width: 17px; }.segmented button { padding-inline: 8px; } }\n",
+      "artifact_manifest_json": "[{\"ordinalPath\":\"file-001.tsx\",\"originalPath\":\"App.tsx\",\"bytes\":4608},{\"ordinalPath\":\"file-002.css\",\"originalPath\":\"styles.css\",\"bytes\":5022}]",
+      "artifact_hash": "3a43e6590f88a145d0602fee6cbb219d4fffb8bfdce1c9cbdcce8e0f1cf677bc",
+      "artifact_bytes": 9673,
+      "word_leak": 0,
+      "error": null,
+      "word": null,
+      "normalized_word": "control",
+      "is_control": 1,
+      "display_order": 0,
+      "judgment_id": "00e5217c-6025-48be-9610-8f4783eeaa3a",
+      "judgment_status": "succeeded",
+      "candidate_order_json": "[\"control\",\"elegant\",\"polished\"]",
+      "prediction": "polished",
+      "probabilities_json": "{\"control\":0.01,\"elegant\":0.08,\"polished\":0.91}",
+      "modifier_present_probability": 980000,
+      "profile_scores_json": "{\"simplicity\":4,\"visual_ornamentation\":5,\"ux_detail\":6}",
+      "judgment_error": null
+    },
+    {
+      "id": "ca39fab0-4414-4453-9767-742363d9b088",
+      "experiment_id": "6f175cf0-7bed-473d-b7c7-0ba1d611ece8",
+      "condition_id": "3fcb7248-418d-4235-8b4f-634e5052a2ed",
+      "run_index": 1,
+      "status": "succeeded",
+      "artifact_bundle": "=== file-001.tsx ===\nimport { useState } from \"react\";\nimport \"./styles.css\";\n\ntype SwitchProps = {\n  checked: boolean;\n  onChange: () => void;\n  label: string;\n  detail: string;\n};\n\nfunction Toggle({ checked, onChange, label, detail }: SwitchProps) {\n  return (\n    <div className=\"setting-row\">\n      <div>\n        <p className=\"setting-label\">{label}</p>\n        <p className=\"setting-detail\">{detail}</p>\n      </div>\n      <button\n        aria-pressed={checked}\n        aria-label={label}\n        className={`toggle ${checked ? \"is-on\" : \"\"}`}\n        onClick={onChange}\n      >\n        <span />\n      </button>\n    </div>\n  );\n}\n\nexport default function App() {\n  const [darkMode, setDarkMode] = useState(false);\n  const [markdown, setMarkdown] = useState(true);\n  const [spellCheck, setSpellCheck] = useState(true);\n  const [saved, setSaved] = useState(true);\n\n  return (\n    <main className={darkMode ? \"app dark\" : \"app\"}>\n      <section className=\"panel\" aria-label=\"Settings\">\n        <header className=\"panel-header\">\n          <div className=\"mark\" aria-hidden=\"true\">N</div>\n          <div>\n            <p className=\"eyebrow\">Papertrail</p>\n            <h1>Settings</h1>\n          </div>\n          <button className=\"close\" aria-label=\"Close settings\">×</button>\n        </header>\n\n        <nav className=\"tabs\" aria-label=\"Settings sections\">\n          <button className=\"tab active\">General</button>\n          <button className=\"tab\">Editor</button>\n          <button className=\"tab\">Account</button>\n        </nav>\n\n        <div className=\"settings\">\n          <div className=\"section-heading\">\n            <h2>Workspace</h2>\n            <p>Make the space feel like yours.</p>\n          </div>\n\n          <label className=\"setting-row select-row\">\n            <div>\n              <p className=\"setting-label\">Accent color</p>\n              <p className=\"setting-detail\">Used for active notes and controls.</p>\n            </div>\n            <span className=\"color-choice\"><i /> Violet <b>⌄</b></span>\n          </label>\n\n          <Toggle checked={darkMode} onChange={() => setDarkMode(!darkMode)} label=\"Dark appearance\" detail=\"Reduce glare in low-light spaces.\" />\n\n          <div className=\"section-heading editor-heading\">\n            <h2>Writing</h2>\n            <p>Small defaults for distraction-free notes.</p>\n          </div>\n          <Toggle checked={markdown} onChange={() => setMarkdown(!markdown)} label=\"Markdown shortcuts\" detail=\"Format text as you type.\" />\n          <Toggle checked={spellCheck} onChange={() => setSpellCheck(!spellCheck)} label=\"Spell check\" detail=\"Underline possible misspellings.\" />\n          <Toggle checked={saved} onChange={() => setSaved(!saved)} label=\"Autosave notes\" detail=\"Save changes while you work.\" />\n        </div>\n\n        <footer className=\"panel-footer\">\n          <span className=\"save-state\"><i className={saved ? \"saved\" : \"\"} /> {saved ? \"All changes saved\" : \"Autosave paused\"}</span>\n          <button className=\"done\">Done</button>\n        </footer>\n      </section>\n    </main>\n  );\n}\n\n=== file-002.css ===\n:root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; color: #272436; background: #f3f1f8; }\n* { box-sizing: border-box; }\nbody { margin: 0; min-width: 320px; }\nbutton { font: inherit; cursor: pointer; }\n.app { min-height: 100vh; display: grid; place-items: center; padding: 28px; background: radial-gradient(circle at 18% 12%, #dfd6ff 0, transparent 31%), radial-gradient(circle at 89% 85%, #d8ece8 0, transparent 28%), #f3f1f8; transition: .25s ease; }\n.panel { width: min(100%, 660px); overflow: hidden; border: 1px solid rgba(101, 82, 145, .12); border-radius: 22px; background: rgba(255,255,255,.88); box-shadow: 0 26px 70px rgba(60, 45, 91, .16); backdrop-filter: blur(18px); }\n.panel-header { display: flex; align-items: center; gap: 12px; padding: 28px 30px 23px; }\n.mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: white; font-family: Georgia, serif; font-size: 20px; background: linear-gradient(145deg, #8568e8, #5840bd); box-shadow: 0 7px 14px rgba(99, 72, 201, .24); }\n.eyebrow { margin: 0 0 2px; color: #7d7691; font-size: 12px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }\nh1, h2, p { margin-top: 0; } h1 { margin-bottom: 0; font-size: 24px; letter-spacing: -.045em; } h2 { margin-bottom: 3px; font-size: 14px; letter-spacing: -.015em; }\n.close { margin-left: auto; width: 32px; height: 32px; border: 0; border-radius: 9px; color: #80788f; background: transparent; font-size: 24px; line-height: 1; } .close:hover { background: #f0edf7; color: #322b45; }\n.tabs { display: flex; gap: 22px; padding: 0 30px; border-bottom: 1px solid #e9e5f0; } .tab { position: relative; padding: 0 0 13px; border: 0; color: #8c849a; background: none; font-size: 13px; font-weight: 650; } .tab.active { color: #6048bd; } .tab.active::after { content: \"\"; position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; border-radius: 2px; background: #7356dc; }\n.settings { padding: 25px 30px 15px; } .section-heading p { margin-bottom: 18px; color: #91899c; font-size: 13px; } .editor-heading { padding-top: 22px; border-top: 1px solid #eeeaf3; }\n.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 64px; } .setting-label { margin-bottom: 4px; font-size: 14px; font-weight: 650; } .setting-detail { margin-bottom: 0; color: #91899c; font-size: 12px; }\n.toggle { position: relative; flex: 0 0 auto; width: 42px; height: 24px; padding: 2px; border: 0; border-radius: 100px; background: #d9d4df; transition: .2s; } .toggle span { display: block; width: 20px; height: 20px; border-radius: 50%; background: white; box-shadow: 0 1px 3px #0002; transition: transform .2s; } .toggle.is-on { background: #7456d9; } .toggle.is-on span { transform: translateX(18px); }\n.color-choice { display: flex; align-items: center; gap: 8px; padding: 8px 9px; border: 1px solid #e3dfe9; border-radius: 9px; color: #5f586b; font-size: 12px; font-weight: 600; } .color-choice i { width: 12px; height: 12px; border-radius: 50%; background: #7b5ce0; } .color-choice b { margin-left: 3px; color: #9b94a5; font-size: 15px; }\n.panel-footer { display: flex; align-items: center; justify-content: space-between; padding: 17px 30px; border-top: 1px solid #e9e5f0; background: rgba(251,250,253,.8); }.save-state { display: flex; align-items: center; gap: 7px; color: #948da0; font-size: 12px; }.save-state i { width: 7px; height: 7px; border-radius: 50%; background: #c2bdc9; }.save-state i.saved { background: #65ae87; }.done { padding: 9px 17px; border: 0; border-radius: 9px; color: white; background: #684ccc; font-size: 13px; font-weight: 700; box-shadow: 0 5px 10px rgba(94,68,190,.2); }.done:hover { background: #593dbf; }\n.dark { background: radial-gradient(circle at 18% 12%, #31265d 0, transparent 31%), radial-gradient(circle at 89% 85%, #193a39 0, transparent 28%), #181722; }.dark .panel { border-color: #3d394b; background: #25232f; box-shadow: 0 26px 70px #0006; }.dark h1, .dark h2, .dark .setting-label { color: #f3effa; }.dark .eyebrow, .dark .setting-detail, .dark .section-heading p, .dark .save-state { color: #b3abbc; }.dark .tabs, .dark .panel-footer, .dark .editor-heading { border-color: #3a3745; }.dark .panel-footer { background: #211f2a; }.dark .color-choice { border-color: #484352; color: #d4cedb; }.dark .close:hover { background: #393445; color: white; }\n@media (max-width: 520px) { .app { padding: 14px; place-items: start center; } .panel { border-radius: 17px; } .panel-header, .settings, .panel-footer { padding-left: 20px; padding-right: 20px; } .tabs { padding: 0 20px; gap: 17px; } .setting-row { gap: 12px; } .setting-detail { max-width: 205px; } }\n",
+      "artifact_manifest_json": "[{\"ordinalPath\":\"file-001.tsx\",\"originalPath\":\"App.tsx\",\"bytes\":3052},{\"ordinalPath\":\"file-002.css\",\"originalPath\":\"styles.css\",\"bytes\":4740}]",
+      "artifact_hash": "68e55b734e7f0203386ca9ff8cc002cb1969fe0afa1bf326e3b446a54f3d1889",
+      "artifact_bytes": 7835,
+      "word_leak": 0,
+      "error": null,
+      "word": "elegant",
+      "normalized_word": "elegant",
+      "is_control": 0,
+      "display_order": 1,
+      "judgment_id": "3d6de8c9-261a-41f0-9b39-1debfec604bc",
+      "judgment_status": "succeeded",
+      "candidate_order_json": "[\"elegant\",\"polished\",\"control\"]",
+      "prediction": "polished",
+      "probabilities_json": "{\"elegant\":0.09,\"polished\":0.89,\"control\":0.02}",
+      "modifier_present_probability": 980000,
+      "profile_scores_json": "{\"simplicity\":4,\"visual_ornamentation\":5,\"ux_detail\":5}",
+      "judgment_error": null
+    },
+    {
+      "id": "52746555-e488-4202-858b-e5f281524487",
+      "experiment_id": "6f175cf0-7bed-473d-b7c7-0ba1d611ece8",
+      "condition_id": "756f74c9-9aca-47c0-8be0-b2af4f94fd44",
+      "run_index": 1,
+      "status": "succeeded",
+      "artifact_bundle": "=== file-001.tsx ===\nimport { useState, type ReactNode } from \"react\";\nimport \"./styles.css\";\n\ntype ToggleProps = {\n  checked: boolean;\n  onChange: () => void;\n  label: string;\n};\n\nfunction Toggle({ checked, onChange, label }: ToggleProps) {\n  return (\n    <button\n      type=\"button\"\n      className={`toggle ${checked ? \"is-on\" : \"\"}`}\n      role=\"switch\"\n      aria-checked={checked}\n      aria-label={label}\n      onClick={onChange}\n    >\n      <span />\n    </button>\n  );\n}\n\nconst Icon = ({ children }: { children: ReactNode }) => (\n  <svg viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" strokeWidth=\"1.8\" strokeLinecap=\"round\" strokeLinejoin=\"round\">\n    {children}\n  </svg>\n);\n\nexport default function App() {\n  const [activeTab, setActiveTab] = useState(\"General\");\n  const [autosave, setAutosave] = useState(true);\n  const [spellcheck, setSpellcheck] = useState(true);\n  const [markdown, setMarkdown] = useState(false);\n  const [appearance, setAppearance] = useState(\"System\");\n\n  const tabs = [\n    { name: \"General\", icon: <Icon><path d=\"M4 6h16M4 12h16M4 18h10\" /></Icon> },\n    { name: \"Editor\", icon: <Icon><path d=\"M4 19.5V16l10.5-10.5 3.5 3.5L7.5 19.5H4Z\" /><path d=\"m12.5 7.5 3.5 3.5\" /></Icon> },\n    { name: \"Appearance\", icon: <Icon><circle cx=\"12\" cy=\"12\" r=\"8\" /><path d=\"M12 4a8 8 0 0 0 0 16V4Z\" /></Icon> },\n    { name: \"Shortcuts\", icon: <Icon><rect x=\"4\" y=\"6\" width=\"16\" height=\"12\" rx=\"2\" /><path d=\"M7 10h.01M10 10h.01M13 10h.01M7 14h6\" /></Icon> },\n  ];\n\n  return (\n    <main className=\"app-shell\">\n      <section className=\"settings-window\" aria-label=\"Settings\">\n        <aside className=\"sidebar\">\n          <div className=\"brand\"><span className=\"brand-mark\">N</span><span>Noted</span></div>\n          <nav aria-label=\"Settings categories\">\n            {tabs.map((tab) => (\n              <button key={tab.name} className={`nav-item ${activeTab === tab.name ? \"active\" : \"\"}`} onClick={() => setActiveTab(tab.name)}>\n                {tab.icon}<span>{tab.name}</span>\n              </button>\n            ))}\n          </nav>\n          <div className=\"account-card\">\n            <div className=\"avatar\">MS</div>\n            <div><strong>Maya Stone</strong><span>Personal space</span></div>\n            <Icon><path d=\"m9 18 6-6-6-6\" /></Icon>\n          </div>\n        </aside>\n\n        <div className=\"content\">\n          <header>\n            <div><p className=\"eyebrow\">Preferences</p><h1>{activeTab}</h1></div>\n            <button type=\"button\" className=\"close\" aria-label=\"Close settings\">×</button>\n          </header>\n\n          {activeTab === \"General\" ? <>\n            <section className=\"group\">\n              <h2>Workspace</h2>\n              <div className=\"setting-row\">\n                <div><h3>Default notebook</h3><p>New notes will be added here.</p></div>\n                <button className=\"select-button\">Daily notes <span>⌄</span></button>\n              </div>\n              <div className=\"setting-row\">\n                <div><h3>Start page</h3><p>Choose what opens when you launch Noted.</p></div>\n                <button className=\"select-button\">Last opened note <span>⌄</span></button>\n              </div>\n            </section>\n            <section className=\"group\">\n              <h2>Writing</h2>\n              <div className=\"setting-row\"><div><h3>Autosave</h3><p>Save changes as you write.</p></div><Toggle checked={autosave} onChange={() => setAutosave(!autosave)} label=\"Toggle autosave\" /></div>\n              <div className=\"setting-row\"><div><h3>Spell check</h3><p>Underline possible spelling mistakes.</p></div><Toggle checked={spellcheck} onChange={() => setSpellcheck(!spellcheck)} label=\"Toggle spell check\" /></div>\n              <div className=\"setting-row\"><div><h3>Markdown shortcuts</h3><p>Use familiar formatting shortcuts while typing.</p></div><Toggle checked={markdown} onChange={() => setMarkdown(!markdown)} label=\"Toggle Markdown shortcuts\" /></div>\n            </section>\n          </> : <section className=\"group placeholder\"><h2>{activeTab}</h2><p>More options for this section are coming together.</p></section>}\n\n          <section className=\"group appearance-group\">\n            <h2>Appearance</h2>\n            <div className=\"appearance-options\" role=\"radiogroup\" aria-label=\"Color theme\">\n              {[\"Light\", \"System\", \"Dark\"].map((option) => <button key={option} role=\"radio\" aria-checked={appearance === option} onClick={() => setAppearance(option)} className={appearance === option ? \"selected\" : \"\"}>{option}</button>)}\n            </div>\n          </section>\n          <footer><span>Changes are saved automatically</span><button type=\"button\">Done</button></footer>\n        </div>\n      </section>\n    </main>\n  );\n}\n\n=== file-002.css ===\n:root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif; color: #252a35; background: #f0f1f6; }\n* { box-sizing: border-box; }\nbutton { font: inherit; }\n.app-shell { min-height: 100vh; display: grid; place-items: center; padding: 32px; background: radial-gradient(circle at 84% 9%, #f9e8d6 0, transparent 25rem), radial-gradient(circle at 13% 91%, #dce7fb 0, transparent 28rem), #f2f3f7; }\n.settings-window { width: min(920px, 100%); min-height: 620px; display: grid; grid-template-columns: 230px 1fr; overflow: hidden; border: 1px solid rgba(28,34,48,.1); border-radius: 18px; background: #fff; box-shadow: 0 24px 70px rgba(36, 41, 55, .16), 0 3px 8px rgba(36, 41, 55, .06); }\n.sidebar { display: flex; flex-direction: column; padding: 27px 14px 15px; background: #faf9f7; border-right: 1px solid #ecebe8; }\n.brand { display:flex; gap: 10px; align-items:center; padding: 0 12px 27px; font-weight: 700; letter-spacing: -.3px; font-size: 17px; }\n.brand-mark { width: 25px; height: 25px; display:grid; place-items:center; border-radius: 8px; background: #5b66d8; color: white; font-family: Georgia, serif; font-size: 16px; font-style: italic; }\nnav { display:grid; gap: 3px; }\n.nav-item { cursor:pointer; width:100%; height: 42px; display:flex; align-items:center; gap: 12px; padding: 0 12px; border:0; border-radius:9px; background:transparent; color:#676b75; font-size:14px; font-weight:500; text-align:left; }\n.nav-item svg { width:18px; height:18px; }.nav-item:hover { background:#f1f0ee; }.nav-item.active { background:#ebeafd; color:#4f58c8; font-weight:600; }\n.account-card { margin-top:auto; display:flex; align-items:center; gap:9px; padding: 12px 8px; border-top:1px solid #ecebe8; color:#383d48; }.account-card .avatar { width:29px;height:29px;display:grid;place-items:center;border-radius:50%;background:#e7c3ad;color:#7b4534;font-size:10px;font-weight:700; }.account-card div:nth-child(2) { display:grid; gap:2px; flex:1; }.account-card strong { font-size:12px; }.account-card span { color:#888b92;font-size:10px; }.account-card svg { width:15px;height:15px;color:#898b92; }\n.content { min-width:0; display:flex; flex-direction:column; padding: 37px 46px 0; }.content header { display:flex; align-items:flex-start; justify-content:space-between; padding-bottom:25px; border-bottom:1px solid #ebebee; }.eyebrow { margin:0 0 4px; color:#8a8c94; font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; } h1 { margin:0; font: 600 31px/1 Georgia, serif; letter-spacing:-.8px; } .close { width:31px;height:31px;border:0;border-radius:8px;background:#f6f6f7;color:#777a82;font-size:25px;line-height:1;cursor:pointer; }.close:hover { background:#eeeeef; }\n.group { padding: 24px 0 4px; }.group h2 { margin:0 0 12px; color:#676b75; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }.setting-row { display:flex; align-items:center; justify-content:space-between; gap:24px; min-height:66px; padding: 10px 0; border-bottom:1px solid #f0f0f1; }.setting-row h3 { margin:0 0 4px; font-size:14px; letter-spacing:-.1px; }.setting-row p, .placeholder p { margin:0; color:#8a8d96; font-size:12px; line-height:1.45; }.select-button { min-width:151px; display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border:1px solid #e1e1e5; border-radius:7px; background:#fff; color:#4e525b; font-size:12px; cursor:pointer; }.select-button span { color:#868992; font-size:17px; line-height:.7; }.toggle { position:relative; flex:0 0 auto; width:38px; height:22px; padding:0; border:0; border-radius:99px; background:#d6d7dc; cursor:pointer; transition:.2s; }.toggle span { position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:white; box-shadow:0 1px 2px #9a9ba2; transition:.2s; }.toggle.is-on { background:#5d68dc; }.toggle.is-on span { transform:translateX(16px); }\n.appearance-group { padding-top:25px; }.appearance-options { display:flex; width:max-content; padding:3px; border-radius:8px; background:#f3f3f5; }.appearance-options button { min-width:72px; padding:7px 12px; border:0; border-radius:6px; background:transparent; color:#777b84; font-size:12px; cursor:pointer; }.appearance-options button.selected { background:#fff; color:#363b46; font-weight:600; box-shadow:0 1px 3px rgba(20,20,30,.12); }.placeholder { min-height:230px; }.placeholder p { font-size:14px; } footer { display:flex; align-items:center; justify-content:space-between; margin-top:auto; padding:18px 0 22px; border-top:1px solid #ebebee; color:#94969d; font-size:11px; } footer button { padding:8px 18px; border:0; border-radius:7px; background:#5864d4; color:#fff; font-size:12px; font-weight:600; cursor:pointer; box-shadow:0 2px 4px rgba(67,78,185,.22); }\n@media (max-width: 650px) { .app-shell { padding:0; place-items:stretch; }.settings-window { min-height:100vh; border-radius:0; grid-template-columns:1fr; }.sidebar { padding:15px; border-right:0; border-bottom:1px solid #ecebe8; }.brand { padding:0 6px 12px; } nav { display:flex; overflow:auto; }.nav-item { width:auto; flex:0 0 auto; }.account-card { display:none; }.content { padding:28px 24px 0; }.setting-row { gap:12px; }.select-button { min-width:130px; }.appearance-options { width:100%; }.appearance-options button { flex:1; } }\n",
+      "artifact_manifest_json": "[{\"ordinalPath\":\"file-001.tsx\",\"originalPath\":\"App.tsx\",\"bytes\":4722},{\"ordinalPath\":\"file-002.css\",\"originalPath\":\"styles.css\",\"bytes\":5341}]",
+      "artifact_hash": "e080e87fe0e3a4d92d6551691ac842f0b6eb2c1deb1545031e53c291c1fb99be",
+      "artifact_bytes": 10106,
+      "word_leak": 0,
+      "error": null,
+      "word": "polished",
+      "normalized_word": "polished",
+      "is_control": 0,
+      "display_order": 2,
+      "judgment_id": "0a83cb0d-bfb0-4c55-b66b-04ae03cff049",
+      "judgment_status": "succeeded",
+      "candidate_order_json": "[\"control\",\"polished\",\"elegant\"]",
+      "prediction": "polished",
+      "probabilities_json": "{\"control\":0.01,\"polished\":0.82,\"elegant\":0.17}",
+      "modifier_present_probability": 980000,
+      "profile_scores_json": "{\"simplicity\":4,\"visual_ornamentation\":5,\"ux_detail\":5}",
+      "judgment_error": null
+    }
+  ],
+  "attempts": [
+    {
+      "id": "15af49a8-6280-48e2-8554-3bbc55963998",
+      "job_id": "2b936442-fe3f-4c15-a005-b4df3ae98c91",
+      "ordinal": 1,
+      "process_id": 727487,
+      "thread_id": "01a05989-4b41-7d01-b729-8831a70507ec",
+      "input_hash": "94db3136c853ab7affb1064b5149922144253b61dc32792986a18049bfa0db14",
+      "output_hash": "d14145963a808ae413261115eb41a2f7807a1b027245aebf803887c53aa47530",
+      "started_at": 1788208560094,
+      "completed_at": 1788208641769,
+      "exit_code": 0,
+      "error": null,
+      "kind": "generate",
+      "target_id": "e45cbf60-06cc-4dba-becd-e18078b6f855",
+      "isolation_id": "4e917fa1abfa7191cd50945ba5752e48567cbd4493ab4bc71677659aff969a4c"
+    },
+    {
+      "id": "3109a20a-e8eb-482d-88be-f6b0bd469211",
+      "job_id": "244c3659-0d2a-404f-bf8a-70e1b8ae5387",
+      "ordinal": 1,
+      "process_id": 729041,
+      "thread_id": "01a0598a-7c44-73c3-920c-4f352c9a2912",
+      "input_hash": "0d3c9fe587836b4989df306150ca6d218af2dd7bed609fd7491fb498bdf63aef",
+      "output_hash": "1eb3ac74c10f3cccb97f426ffe3121e523815b8e7ec13a50f8f1956baa64130c",
+      "started_at": 1788208641773,
+      "completed_at": 1788208706555,
+      "exit_code": 0,
+      "error": null,
+      "kind": "generate",
+      "target_id": "ca39fab0-4414-4453-9767-742363d9b088",
+      "isolation_id": "6f43597c845ccb9ba610cc2e9398e305f15d20165424bf64e26a3bb4030bf0b4"
+    },
+    {
+      "id": "0972b3af-a960-418f-89c1-0193e2367f79",
+      "job_id": "dab4a09e-a22e-427c-b227-1c223ba45e3d",
+      "ordinal": 1,
+      "process_id": 730544,
+      "thread_id": "01a0598b-79b0-7f10-a53d-30bcf502aed5",
+      "input_hash": "be0e5c174e3062d73062333e6c6731ef77cf0d6175c702c0889f976951de7e7d",
+      "output_hash": "09f84850d376256bc713b07ef2f8fcae6d985b8a3c2681384bf113f6988cc1f7",
+      "started_at": 1788208706561,
+      "completed_at": 1788208816012,
+      "exit_code": 0,
+      "error": null,
+      "kind": "generate",
+      "target_id": "52746555-e488-4202-858b-e5f281524487",
+      "isolation_id": "b65e25c0c03ba7430e922e68f3c5eced616d96d11dd9a95e1b1f44383a16beba"
+    },
+    {
+      "id": "b9f1131d-b0b7-4e92-bc6a-682d9da6442b",
+      "job_id": "f190aa58-be3e-4317-b42b-886bfbf49303",
+      "ordinal": 1,
+      "process_id": 732236,
+      "thread_id": "01a0598d-25bc-7012-b491-83e244bfdf77",
+      "input_hash": "0c9961beb4d7fe6e67768998fc7e8806a554189a5aaa5d1f10b1380be5ec7c11",
+      "output_hash": "8e9f1cf8abdf662cceb2d71c99d08ea68c474da461a9b402e66f299b5781ed0c",
+      "started_at": 1788208816018,
+      "completed_at": 1788208823603,
+      "exit_code": 0,
+      "error": null,
+      "kind": "classify",
+      "target_id": "00e5217c-6025-48be-9610-8f4783eeaa3a",
+      "isolation_id": "d0dd3e40280603f618def2514d8a2176bbde0218e337775ea372127a4d19ce91"
+    },
+    {
+      "id": "2443ba71-22df-4578-9af7-0be1c896fd74",
+      "job_id": "ee2c2b36-23eb-43db-803a-c86a7233a0a7",
+      "ordinal": 1,
+      "process_id": 733059,
+      "thread_id": "01a0598d-427c-7f82-8d66-411f9e15b263",
+      "input_hash": "86a6686ef3d04647b789300d05f58e60d46913b30cc6818480ca4f39951bf69c",
+      "output_hash": "87d11cca14a188c6cc13d2c64bf98ba914b35605df52db0a252d5fb93f6da851",
+      "started_at": 1788208823608,
+      "completed_at": 1788208831726,
+      "exit_code": 0,
+      "error": null,
+      "kind": "classify",
+      "target_id": "3d6de8c9-261a-41f0-9b39-1debfec604bc",
+      "isolation_id": "d90ec91a2b7f03d88358275657f79baa8fe6553bd62db1795b0536f27b6c59ee"
+    },
+    {
+      "id": "72343f06-36a0-4687-af42-303b769e417f",
+      "job_id": "6906c1d5-2f8a-4545-b795-d0f6c4c3eaa6",
+      "ordinal": 1,
+      "process_id": 733928,
+      "thread_id": "01a0598d-6242-7482-9bf8-33f9ef5419c0",
+      "input_hash": "d552ff8fd6efadf0eb5e639657dabcaaaeed5d098080d3976283070ff832ba35",
+      "output_hash": "001c8b6780254ca841fa35b7abb6fd076822616539e4d307251cbac88bbe1bc2",
+      "started_at": 1788208831730,
+      "completed_at": 1788208839273,
+      "exit_code": 0,
+      "error": null,
+      "kind": "classify",
+      "target_id": "0a83cb0d-bfb0-4c55-b66b-04ae03cff049",
+      "isolation_id": "b8441fbcff936d10a4e5a7ab4bedc392c7ed7bad862338f88365c65961a130ca"
+    },
+    {
+      "id": "8618b28e-5325-4456-adc6-60f38c852e4d",
+      "job_id": "e99532b4-7142-45cd-a1e3-d70189377262",
+      "ordinal": 1,
+      "process_id": 734767,
+      "thread_id": "01a0598d-80d8-7003-809f-8f981ca38223",
+      "input_hash": "a17fde32929dc20b5fbfd92d4da5f9b6e9e80ee2be4788259ebcb6603fdbe73f",
+      "output_hash": "f275689f214d5e55ea170ea950a4aab0007ecc46e77d8cbb442bbd91f025350f",
+      "started_at": 1788208839279,
+      "completed_at": 1788208846651,
+      "exit_code": 0,
+      "error": null,
+      "kind": "profile",
+      "target_id": "00e5217c-6025-48be-9610-8f4783eeaa3a",
+      "isolation_id": "e3dfe03e7759caaa71520165dd633252502a17ba059c11eefc949cc3bc2f3511"
+    },
+    {
+      "id": "7a0207bc-98e0-4e7c-b0a5-a9f89f902f12",
+      "job_id": "7bc63ba0-74d0-4bb3-a71d-50c7a7af9149",
+      "ordinal": 1,
+      "process_id": 735545,
+      "thread_id": "01a0598d-9c68-7ff3-8620-8662f8c51383",
+      "input_hash": "6b73d9f233b26c8b27087701035aadfce9bab23600e8a5584384b9a212990156",
+      "output_hash": "e2c1cb13b91f631292c159bc38d26f669325dd8b98b67438a7ef49cf8edf177b",
+      "started_at": 1788208846656,
+      "completed_at": 1788208853807,
+      "exit_code": 0,
+      "error": null,
+      "kind": "profile",
+      "target_id": "3d6de8c9-261a-41f0-9b39-1debfec604bc",
+      "isolation_id": "e90d4e460303d086b931631c9fdd017975be9b024762b74aed574f10fc007046"
+    },
+    {
+      "id": "fb6a62d4-6d5c-4c9b-9ca5-ec58b895e8f9",
+      "job_id": "9e8d655d-d6fd-449e-a4bf-6b1cbc8e1b78",
+      "ordinal": 1,
+      "process_id": 736387,
+      "thread_id": "01a0598d-b8c0-7ac3-b89b-906f4fc2cebb",
+      "input_hash": "0dcd725d17cdcdf1fa72f5ebb305a4525cae7b6af02441b42ef9c6f7e08307bd",
+      "output_hash": "e97ae694e486ca10d6676f9f95d93a285eac4b5a49db7ce6213d89fe8889f4b9",
+      "started_at": 1788208853812,
+      "completed_at": 1788208860879,
+      "exit_code": 0,
+      "error": null,
+      "kind": "profile",
+      "target_id": "0a83cb0d-bfb0-4c55-b66b-04ae03cff049",
+      "isolation_id": "0942e98de950a52e69f9a3a200522c0088a98d27a12b9e42c38dee9b7f7c3ed4"
+    }
+  ],
+  "metrics": {
+    "labels": [
+      "control",
+      "elegant",
+      "polished"
+    ],
+    "chance": 0.3333333333333333,
+    "eligibleCount": 3,
+    "excludedCount": 0,
+    "accuracy": 0.3333333333333333,
+    "correctCount": 1,
+    "logLoss": 2.4038555777879336,
+    "controlRecall": 0,
+    "recalls": {
+      "control": {
+        "correct": 0,
+        "total": 1,
+        "rate": 0
+      },
+      "elegant": {
+        "correct": 0,
+        "total": 1,
+        "rate": 0
+      },
+      "polished": {
+        "correct": 1,
+        "total": 1,
+        "rate": 1
+      }
+    },
+    "confusion": {
+      "control": {
+        "control": 0,
+        "elegant": 0,
+        "polished": 1
+      },
+      "elegant": {
+        "control": 0,
+        "elegant": 0,
+        "polished": 1
+      },
+      "polished": {
+        "control": 0,
+        "elegant": 0,
+        "polished": 1
+      }
+    },
+    "pairConfusions": [
+      {
+        "pair": [
+          "control",
+          "polished"
+        ],
+        "count": 1
+      },
+      {
+        "pair": [
+          "elegant",
+          "polished"
+        ],
+        "count": 1
+      },
+      {
+        "pair": [
+          "control",
+          "elegant"
+        ],
+        "count": 0
+      }
+    ],
+    "modifierPresentMean": {
+      "control": 0.98,
+      "elegant": 0.98,
+      "polished": 0.98
+    },
+    "profiles": {
+      "control": {
+        "simplicity": {
+          "mean": 4,
+          "delta": 0,
+          "standardDeviation": 0,
+          "count": 1,
+          "values": [
+            4
+          ]
+        },
+        "visual_ornamentation": {
+          "mean": 5,
+          "delta": 0,
+          "standardDeviation": 0,
+          "count": 1,
+          "values": [
+            5
+          ]
+        },
+        "ux_detail": {
+          "mean": 6,
+          "delta": 0,
+          "standardDeviation": 0,
+          "count": 1,
+          "values": [
+            6
+          ]
+        }
+      },
+      "elegant": {
+        "simplicity": {
+          "mean": 4,
+          "delta": 0,
+          "standardDeviation": 0,
+          "count": 1,
+          "values": [
+            4
+          ]
+        },
+        "visual_ornamentation": {
+          "mean": 5,
+          "delta": 0,
+          "standardDeviation": 0,
+          "count": 1,
+          "values": [
+            5
+          ]
+        },
+        "ux_detail": {
+          "mean": 5,
+          "delta": -1,
+          "standardDeviation": 0,
+          "count": 1,
+          "values": [
+            5
+          ]
+        }
+      },
+      "polished": {
+        "simplicity": {
+          "mean": 4,
+          "delta": 0,
+          "standardDeviation": 0,
+          "count": 1,
+          "values": [
+            4
+          ]
+        },
+        "visual_ornamentation": {
+          "mean": 5,
+          "delta": 0,
+          "standardDeviation": 0,
+          "count": 1,
+          "values": [
+            5
+          ]
+        },
+        "ux_detail": {
+          "mean": 5,
+          "delta": -1,
+          "standardDeviation": 0,
+          "count": 1,
+          "values": [
+            5
+          ]
+        }
+      }
+    }
+  }
+}
