@@ -23,15 +23,22 @@ const inheritedEnvironmentKeys = [
   "SYSTEMROOT", "COMSPEC", "PATHEXT", "LOCALAPPDATA", "APPDATA",
 ];
 
+// Both launch paths pass these to the worker. sudo resets the environment,
+// so the external sandbox sets them again with bwrap --setenv.
+function fakeModeEnvironment(): Record<string, string> {
+  if (process.env.WORDS_FAKE_CODEX !== "1") return {};
+  const env: Record<string, string> = { WORDS_FAKE_CODEX: "1" };
+  if (process.env.WORDS_FAKE_DELAY_MS) env.WORDS_FAKE_DELAY_MS = process.env.WORDS_FAKE_DELAY_MS;
+  return env;
+}
+
 function safeEnvironment(codexHome: string): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { CODEX_HOME: codexHome, NO_COLOR: "1", NODE_ENV: process.env.NODE_ENV };
+  const env: NodeJS.ProcessEnv = {
+    CODEX_HOME: codexHome, NO_COLOR: "1", NODE_ENV: process.env.NODE_ENV, ...fakeModeEnvironment(),
+  };
   for (const key of inheritedEnvironmentKeys) {
     const value = process.env[key];
     if (value) env[key] = value;
-  }
-  if (process.env.WORDS_FAKE_CODEX === "1") env.WORDS_FAKE_CODEX = "1";
-  if (process.env.WORDS_FAKE_CODEX === "1" && process.env.WORDS_FAKE_DELAY_MS) {
-    env.WORDS_FAKE_DELAY_MS = process.env.WORDS_FAKE_DELAY_MS;
   }
   if (process.env.WORDS_EXTERNAL_SANDBOX === "1") env.WORDS_EXTERNAL_SANDBOX = "1";
   return env;
@@ -116,6 +123,7 @@ export async function runIsolatedCall(
       "--setenv", "NODE_ENV", process.env.NODE_ENV,
       "--setenv", "NO_COLOR", "1",
       "--setenv", "WORDS_EXTERNAL_SANDBOX", "1",
+      ...Object.entries(fakeModeEnvironment()).flatMap(([key, value]) => ["--setenv", key, value]),
       "--chdir", "/workspace",
       "/usr/bin/setpriv",
       "--reuid=1000", "--regid=1000", "--clear-groups",
