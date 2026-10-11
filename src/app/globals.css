@@ -31,7 +31,7 @@ a { color: inherit; }
 .status { display: inline-flex; align-items: center; width: max-content; padding: 5px 10px; border-radius: 999px; background: #e7e4dc; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .status.ready, .status.completed, .status.succeeded { color: var(--forest); background: var(--forest-light); }
 .status.blocked, .status.failed, .status.failed_final, .status.completed_with_failures { color: #943a26; background: var(--coral-light); }
-.status.running, .status.queued { color: #76570d; background: #f7e9bd; }
+.status.running, .status.queued, .status.fake { color: #76570d; background: #f7e9bd; }
 .two-column { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(320px, .7fr); gap: 18px; align-items: start; }
 .panel { padding: 28px; }
 .section-heading { display: flex; gap: 16px; justify-content: space-between; align-items: start; margin-bottom: 24px; }
