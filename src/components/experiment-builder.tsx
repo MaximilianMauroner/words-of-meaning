@@ -6,6 +6,7 @@ import { defaultDimensions, FIXED_BENCHMARK_MODEL, FIXED_BENCHMARK_REASONING, re
 
 type Preflight = {
   ok: boolean;
+  fakeCodex: boolean;
   authFilePresent: boolean;
   sdkVersion: string;
   nodeVersion: string;
@@ -24,6 +25,31 @@ type ExperimentSummary = {
 };
 
 const initialPrompt = recommendedDesignTasks[0].prompt;
+
+function preflightSummary(preflight: Preflight | null) {
+  if (!preflight?.ok) {
+    return {
+      title: "Codex login needed",
+      detail: "Run `codex login` on this machine. The benchmark fails closed unless it can copy file-backed auth into each temporary Codex home.",
+      status: "blocked",
+      label: "Blocked",
+    };
+  }
+  if (preflight.fakeCodex) {
+    return {
+      title: "Fake workers active",
+      detail: "WORDS_FAKE_CODEX=1 replaces every Codex call with fixed output. Use these runs for development only, never to interpret word behavior.",
+      status: "fake",
+      label: "Fake",
+    };
+  }
+  return {
+    title: "Ready for isolated runs",
+    detail: `SDK ${preflight.sdkVersion}. Every call gets a fresh process, thread, workspace, and Codex home.`,
+    status: "ready",
+    label: "Passed",
+  };
+}
 
 export function ExperimentBuilder() {
   const router = useRouter();
@@ -48,6 +74,7 @@ export function ExperimentBuilder() {
   const conditions = words.length + 1;
   const outputs = conditions * runs * selectedTasks.length;
   const calls = outputs * 3;
+  const summary = preflightSummary(preflight);
 
   async function refresh() {
     const [preflightResponse, experimentResponse] = await Promise.all([
@@ -105,14 +132,10 @@ export function ExperimentBuilder() {
       <section className="preflight-card" aria-live="polite">
         <div>
           <p className="eyebrow">Isolation preflight</p>
-          <h2>{preflight?.ok ? "Ready for isolated runs" : "Codex login needed"}</h2>
-          <p>
-            {preflight?.ok
-              ? `SDK ${preflight.sdkVersion}. Every call gets a fresh process, thread, workspace, and Codex home.`
-              : "Run `codex login` on this machine. The benchmark fails closed unless it can copy file-backed auth into each temporary Codex home."}
-          </p>
+          <h2>{summary.title}</h2>
+          <p>{summary.detail}</p>
         </div>
-        <span className={preflight?.ok ? "status ready" : "status blocked"}>{preflight?.ok ? "Passed" : "Blocked"}</span>
+        <span className={`status ${summary.status}`}>{summary.label}</span>
       </section>
 
       <div className="two-column">

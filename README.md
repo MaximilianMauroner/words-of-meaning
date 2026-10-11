@@ -69,7 +69,7 @@ The test suite includes two consecutive fake model calls and a full three-stage 
 
 JSON exports include an opaque `isolation_id` for every attempt. Distinct values prove that the app allocated a new temporary workspace for each generation, classification, and profile call without exposing the temporary path.
 
-For development without Codex usage, set `WORDS_FAKE_CODEX=1`. Fake mode is visible in preflight and should never be used to interpret word behavior.
+For development without Codex usage, set `WORDS_FAKE_CODEX=1`. Fake mode is visible in preflight, which reports `fakeCodex: true`, and should never be used to interpret word behavior.
 
 ## Reading results
 

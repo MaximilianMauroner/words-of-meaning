@@ -203,8 +203,10 @@ export function isolationPreflight() {
   } catch {
     authFilePresent = false;
   }
+  const fakeCodex = process.env.WORDS_FAKE_CODEX === "1";
   return {
-    ok: authFilePresent || process.env.WORDS_FAKE_CODEX === "1",
+    ok: authFilePresent || fakeCodex,
+    fakeCodex,
     authFilePresent,
     sdkVersion: "0.151.0",
     nodeVersion: process.version,

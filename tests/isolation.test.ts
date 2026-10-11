@@ -1,5 +1,5 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { runIsolatedCall } from "@/server/runner/isolation";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { isolationPreflight, runIsolatedCall } from "@/server/runner/isolation";
 import { forbiddenJudgeFields } from "@/shared/worker";
 
 beforeAll(() => { process.env.WORDS_FAKE_CODEX = "1"; });
@@ -30,5 +30,15 @@ describe("isolated runner", () => {
     });
     expect(forbiddenJudgeFields(serialized)).toEqual([]);
     expect(forbiddenJudgeFields(JSON.stringify({ ...JSON.parse(serialized), conditionId: "secret" }))).toEqual(["conditionId"]);
+  });
+});
+
+describe("isolation preflight", () => {
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  it("discloses fake worker mode", () => {
+    expect(isolationPreflight().fakeCodex).toBe(true);
+    vi.stubEnv("WORDS_FAKE_CODEX", "0");
+    expect(isolationPreflight().fakeCodex).toBe(false);
   });
 });
