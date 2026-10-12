@@ -5,7 +5,7 @@ revision, setup, outcomes and cleanup in private audit evidence.
 
 | Feature | Coverage |
 | --- | --- |
-| [W1](w1.md) | Partial: live evidence required |
+| [W1](w1.md) | Partial: fake/auth checks need live evidence; sandbox capability probe absent |
 | [W2](w2.md) | Partial: live evidence required |
 | [W3](w3.md) | Partial: live evidence required |
 | [W4](w4.md) | Partial: live evidence required |
