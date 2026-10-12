@@ -10,7 +10,7 @@ revision, setup, outcomes and cleanup in private audit evidence.
 | [W3](w3.md) | Partial: live evidence required |
 | [W4](w4.md) | Partial: live evidence required |
 | [W5](w5.md) | Partial: live evidence required |
-| [W6](w6.md) | Partial: live evidence required |
+| [W6](w6.md) | Partial: UI artifacts need live evidence; Markdown and multi-judge/channel coverage blocked |
 | [W7](w7.md) | Partial: live evidence required |
 
 ## Existing setup and coverage notes
