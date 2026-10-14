@@ -7,3 +7,6 @@
 .env*
 !.env.example
 *.tar.gz
+
+# Local T3 Code project configuration
+t3.json
