@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
@@ -207,6 +207,7 @@ ${screenshotHtml ? `<section><h2>Static HTML/CSS examples</h2><p class="note">Re
 <footer><p>Input exports: ${datasets.map((dataset) => `<code>${escapeHtml(dataset.file)}</code>`).join(", ")}</p><p>Official SDK reference: <a href="https://learn.chatgpt.com/docs/codex-sdk" target="_blank" rel="noopener noreferrer">OpenAI Codex SDK documentation</a>. The SDK starts a new thread with <code>startThread()</code>; this benchmark adds a fresh process, client, workspace, and temporary home for each call.</p></footer>
 </main></body></html>`;
 
+await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(outputPath, html);
 const bytes = Buffer.byteLength(html);
 const hash = createHash("sha256").update(html).digest("hex");
