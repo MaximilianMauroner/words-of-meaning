@@ -10,3 +10,5 @@
 
 # Local T3 Code project configuration
 t3.json
+/.agents/*
+!/.agents/skills/
