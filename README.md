@@ -39,7 +39,7 @@ On Linux hosts that disable unprivileged user namespaces, the Codex workspace sa
 
 ## Requirements
 
-- Node.js 20 or newer
+- Node.js 22.13 or newer
 - A file-backed Codex login created by `codex login`
 
 The app uses `@openai/codex-sdk` with the existing Codex sign-in. It does not accept an API key. Account credits, rate limits, and usage rules still apply.
@@ -47,9 +47,9 @@ The app uses `@openai/codex-sdk` with the existing Codex sign-in. It does not ac
 ## Run locally
 
 ```bash
-npm install
+pnpm install
 codex login
-npm run dev
+pnpm run dev
 ```
 
 Open `http://localhost:3000`. The isolation preflight blocks experiments until it can find the local Codex `auth.json` file.
@@ -59,10 +59,10 @@ Data lives in `.data/words-of-meaning.sqlite`. Override the path with `WORDS_DB_
 ## Validate
 
 ```bash
-npm test
-npm run typecheck
-npm run lint
-npm run build
+pnpm test
+pnpm run typecheck
+pnpm run lint
+pnpm run build
 ```
 
 The test suite includes two consecutive fake model calls and a full three-stage experiment. It asserts distinct process IDs, thread IDs, and workspace fingerprints. It also tests immediate recovery of an interrupted job.

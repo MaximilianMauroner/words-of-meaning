@@ -11,8 +11,8 @@ one worker. Check active work, memory, load and ports before install/start.
 Record revision, mode, database path privately, port and process handles.
 
 ```sh
-npm ci --no-audit --no-fund
-WORDS_FAKE_CODEX=1 WORDS_MAX_CONCURRENCY=1 WORDS_DB_PATH=<owned-absolute-sqlite-path> npm run dev -- --hostname 127.0.0.1 --port 43131
+pnpm install --frozen-lockfile
+WORDS_FAKE_CODEX=1 WORDS_MAX_CONCURRENCY=1 WORDS_DB_PATH=<owned-absolute-sqlite-path> pnpm run dev --hostname 127.0.0.1 --port 43131
 ```
 
 Create the parent state directory first. Require `/api/preflight` to report
@@ -30,7 +30,7 @@ Run serially. Recheck readiness and reset owned state before a targeted retry.
 Stop the owned server and all worker children before deleting its owned SQLite
 file, WAL/SHM and temporary workspace remnants. Do not remove the daily `.data`
 database. Retain redacted evidence under ignored `.agents/artifacts/<run-id>/`
-outside state. Supporting commands: `npm test`, `npm run typecheck`,
-`npm run lint`, `npm run build`. Report each separately from live journeys.
+outside state. Supporting commands: `pnpm test`, `pnpm run typecheck`,
+`pnpm run lint`, `pnpm run build`. Report each separately from live journeys.
 Real Codex calls, auth-file copying and external sandbox configuration changes
 need separate authority. Keep their coverage blocked in a no-spend audit.
