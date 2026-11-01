@@ -39,7 +39,7 @@ On Linux hosts that disable unprivileged user namespaces, the Codex workspace sa
 
 ## Requirements
 
-- Node.js 20 or newer
+- Node.js 22.13 or newer
 - A file-backed Codex login created by `codex login`
 
 The app uses `@openai/codex-sdk` with the existing Codex sign-in. It does not accept an API key. Account credits, rate limits, and usage rules still apply.
