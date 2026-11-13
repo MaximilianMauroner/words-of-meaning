@@ -49,24 +49,11 @@ export const artifactFormats = ["plain_html_css", "markdown"] as const;
 export const artifactFormatSchema = z.enum(artifactFormats);
 export type ArtifactFormat = z.infer<typeof artifactFormatSchema>;
 
-export const recommendedWordRows = {
-  positive: ["beautiful", "lovely", "pretty", "attractive", "appealing"],
-  neutral: ["plain", "ordinary", "standard", "conventional", "typical"],
-  negative: ["unattractive", "unpleasant", "unsightly", "unappealing", "inelegant"],
-} as const;
-
-export const recommendedEverydayTasks = [
-  { id: "poem-rain", name: "Rain poem", family: "poem", split: "regression", placement: "inline", prompt: "Write a {{word}} poem about rain arriving after a dry week." },
-  { id: "poem-market", name: "Market poem", family: "poem", split: "discovery", placement: "suffix", prompt: "Write a twelve-line poem about a neighborhood market. Make it {{word}}." },
-  { id: "poem-window", name: "Window poem", family: "poem", split: "holdout", placement: "inline", prompt: "Write a {{word}} poem about light through a kitchen window." },
-  { id: "paragraph-garden", name: "Garden paragraph", family: "paragraph", split: "regression", placement: "suffix", prompt: "Write one paragraph describing a shared garden at dusk. Make it {{word}}." },
-  { id: "paragraph-commute", name: "Commute paragraph", family: "paragraph", split: "discovery", placement: "inline", prompt: "Write a {{word}} paragraph about an ordinary morning commute." },
-  { id: "paragraph-letter", name: "Letter paragraph", family: "paragraph", split: "holdout", placement: "suffix", prompt: "Write one paragraph about finding an old letter. Make it {{word}}." },
+export const recommendedDesignTasks = [
   { id: "ui-notes", name: "Notes settings", family: "ui", split: "regression", placement: "suffix", prompt: "Build a {{word}} static HTML and CSS settings page for a note-taking application. Create only index.html and styles.css; do not use React or JavaScript." },
   { id: "ui-calendar", name: "Calendar dashboard", family: "ui", split: "discovery", placement: "inline", prompt: "Build a {{word}} static HTML and CSS dashboard for a personal calendar. Create only index.html and styles.css; do not use React or JavaScript." },
   { id: "ui-recipes", name: "Recipe collection", family: "ui", split: "holdout", placement: "suffix", prompt: "Build a {{word}} static HTML and CSS page for organizing saved recipes. Create only index.html and styles.css; do not use React or JavaScript." },
 ] as const;
-export const recommendedDesignTasks = recommendedEverydayTasks.filter((task) => task.family === "ui");
 
 export const taskTemplateSchema = z.object({
   id: z.string().regex(/^[a-z][a-z0-9_-]*$/).max(80),
@@ -116,8 +103,6 @@ export const createExperimentSchema = z.object({
   dimensions: z.array(dimensionSchema).min(1).max(30).default([...defaultDimensions]),
   tasks: z.array(taskTemplateSchema).min(1).max(100).optional(),
   judges: z.array(judgeConfigSchema).min(1).max(10).optional(),
-  primaryEndpoint: z.enum(["exact_modifier_accuracy", "modifier_detection_accuracy"])
-    .default("exact_modifier_accuracy"),
 }).superRefine((input, context) => {
   for (const [field, values] of [["tasks", input.tasks], ["judges", input.judges]] as const) {
     if (!values) continue;
