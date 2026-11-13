@@ -31,11 +31,9 @@ type ResultData = {
       exactModifier: { eligibleCount: number; correctCount: number; chance: number | null; accuracy: number | null; wilson95: [number, number] | null };
     };
     taskAware: { taskCount: number; taskBootstrapAccuracy95: [number, number] | null; blockedPermutationPValue: number | null; resamplingUnit: string };
-    controlRecall: number | null;
     recalls: Record<string, { correct: number; total: number; rate: number | null }>;
     confusion: Record<string, Record<string, number>>;
-    pairConfusions: Array<{ pair: [string, string]; count: number }>;
-    profiles: Record<string, Record<string, { mean: number | null; delta: number | null; standardDeviation: number | null; count: number; values: number[] }>>;
+    profiles: Record<string, Record<string, { mean: number | null; delta: number | null; count: number }>>;
   };
 };
 

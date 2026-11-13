@@ -17,8 +17,6 @@ export type MetricRun = {
   placement?: "inline" | "suffix" | null;
 };
 
-export type ExperimentMetrics = ReturnType<typeof computeMetrics>;
-
 function mean(values: number[]): number | null {
   return values.length ? values.reduce((total, value) => total + value, 0) / values.length : null;
 }
@@ -156,15 +154,10 @@ export function computeMetrics(runs: MetricRun[], dimensionKeys: string[]) {
     const values = profileRaw[label][key];
     const rawMean = mean(values);
     const controlMean = controlMeans[key];
-    const standardDeviation = rawMean === null || values.length === 0 ? null : Math.sqrt(
-      values.reduce((total, value) => total + (value - rawMean) ** 2, 0) / values.length,
-    );
     return [key, {
       mean: rawMean,
       delta: rawMean === null || controlMean === null ? null : rawMean - controlMean,
-      standardDeviation,
       count: values.length,
-      values,
     }];
   }))]));
 
@@ -221,7 +214,6 @@ export function computeMetrics(runs: MetricRun[], dimensionKeys: string[]) {
       blockedPermutationPValue: blockedPermutationPValue(blockedRows, labels),
       resamplingUnit: "task_template",
     },
-    controlRecall: null,
     recalls,
     confusion,
     pairConfusions,

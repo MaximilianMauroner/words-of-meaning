@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import {
   CONTROL_LABEL,
@@ -151,8 +151,4 @@ export function cancelExperiment(id: string): boolean {
   const result = db.update(experiments).set({ cancelRequested: true, status: "canceled", completedAt: new Date() }).where(eq(experiments.id, id)).run();
   sqlite.prepare("UPDATE jobs SET state = 'canceled', updated_at = ? WHERE experiment_id = ? AND state = 'pending'").run(Date.now(), id);
   return result.changes > 0;
-}
-
-export function hashPrompt(prompt: string): string {
-  return createHash("sha256").update(prompt).digest("hex");
 }

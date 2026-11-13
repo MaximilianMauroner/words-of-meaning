@@ -7,10 +7,7 @@ import { defaultDimensions, FIXED_BENCHMARK_MODEL, FIXED_BENCHMARK_REASONING, re
 type Preflight = {
   ok: boolean;
   fakeCodex: boolean;
-  authFilePresent: boolean;
   sdkVersion: string;
-  nodeVersion: string;
-  controls: Record<string, boolean | string>;
 };
 
 type ExperimentSummary = {

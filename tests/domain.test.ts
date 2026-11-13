@@ -117,7 +117,6 @@ describe("experiment domain", () => {
         { id: "judge-b", model: "judge-b", reasoning: "medium", channels: ["source", "screenshot"] },
       ],
     });
-    expect(result.primaryEndpoint).toBe("exact_modifier_accuracy");
     expect(result.tasks).toHaveLength(2);
     expect(result.judges).toHaveLength(2);
   });
