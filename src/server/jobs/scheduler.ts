@@ -38,7 +38,6 @@ type JudgeContext = {
 
 const globalScheduler = globalThis as typeof globalThis & {
   wordsSchedulerRunning?: boolean;
-  wordsSchedulerTimer?: NodeJS.Timeout;
   wordsAbortControllers?: Map<string, AbortController>;
 };
 

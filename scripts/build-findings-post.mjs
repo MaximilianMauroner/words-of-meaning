@@ -349,15 +349,6 @@ const deltaRange = (family, dim) => {
     .map((l) => Math.abs(profileTable[family].rows[l][dim].delta));
   return { min: Math.min(...mags), max: Math.max(...mags) };
 };
-const biggestShift = (family, dim) => {
-  let best = null;
-  for (const l of profileTable[family].labels) {
-    if (l === "control") continue;
-    const d = profileTable[family].rows[l][dim].delta;
-    if (!best || Math.abs(d) > Math.abs(best.delta)) best = { label: l, delta: d };
-  }
-  return best;
-};
 // Largest absolute shift anywhere in a family, across every word and dimension.
 const largestShift = (family) => {
   let best = null;
